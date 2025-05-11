@@ -1,23 +1,24 @@
 import streamlit as st
-from rdkit import Chem
-from rdkit.Chem import Draw
+import requests
 from PIL import Image
-import io
+from io import BytesIO
 
-st.set_page_config(page_title="3D Molecule Viewer", layout="centered")
-st.title("🔬 3D Molecule Visualizer")
-st.write("Enter a valid SMILES code to see its molecular structure:")
+st.set_page_config(page_title="Molecule Visualizer", layout="centered")
+st.title("🧪 Molecule Structure Viewer")
+st.write("Enter a valid SMILES code (e.g., CCO for ethanol):")
 
-smiles = st.text_input("SMILES Code", "CCO")  # Example: Ethanol
+smiles = st.text_input("SMILES Code", "CCO")
 
-try:
-    mol = Chem.MolFromSmiles(smiles)
-    if mol:
-        img = Draw.MolToImage(mol, size=(300, 300))
-        st.image(img, caption="Molecular Structure", use_column_width=False)
-    else:
-        st.error("❌ Invalid SMILES code. Please enter a correct one.")
-except Exception as e:
-    st.error(f"⚠️ Error: {str(e)}")
+if smiles:
+    try:
+        # Use NCI’s Cactus API to get the structure image
+        url = f"https://cactus.nci.nih.gov/chemical/structure/{smiles}/image"
+        response = requests.get(url)
 
-   
+        if response.status_code == 200:
+            img = Image.open(BytesIO(response.content))
+            st.image(img, caption=f"Structure of {smiles}")
+        else:
+            st.error("❌ Invalid SMILES or unable to fetch image.")
+    except Exception as e:
+        st.error(f"⚠️ Error: {e}")
