@@ -1,5 +1,18 @@
 import streamlit as st
 import py3Dmol
+import requests
+
+# Function to fetch SMILES from PubChem based on molecule name
+def get_smiles_from_pubchem(molecule_name):
+    # PubChem API to search for the molecule by name
+    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{molecule_name}/property/SMILES/TXT"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        return response.text.strip()  # Return the SMILES string
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching SMILES for {molecule_name}: {e}")
+        return ""
 
 # Function to generate AR scene HTML with A-Frame and AR.js
 def ar_viewer_html(smiles):
@@ -23,7 +36,6 @@ def ar_viewer_html(smiles):
     <body style="margin: 0; overflow: hidden;">
         <a-scene embedded arjs>
             <a-marker preset="hiro">
-                <!-- We will use the 3Dmol-generated model here in AR -->
                 <a-entity position="0 0 0" rotation="0 0 0" scale="0.1 0.1 0.1" geometry="primitive: box; width: 1; height: 1; depth: 1;" material="color: blue;">
                 </a-entity>
             </a-marker>
@@ -34,33 +46,23 @@ def ar_viewer_html(smiles):
     """
     return ar_scene_html
 
-# Function to convert molecule name to SMILES (can be extended to use different molecule names)
-def molecule_to_smiles(molecule_name):
-    molecule_dict = {
-        'benzene': 'C1=CC=CC=C1',
-        'methane': 'CH4',
-        'ethanol': 'CCO',
-        'acetone': 'CC(C)=O',
-        'glucose': 'C6H12O6'
-    }
-    return molecule_dict.get(molecule_name.lower(), '')
-
 # Streamlit App UI
 st.title("Molecular AR Viewer")
 st.write("""
          This app allows you to view molecular structures in Augmented Reality (AR). 
-         Enter a molecule name (like benzene, methane, ethanol) to display its structure in AR.
+         Enter a molecule name (like water, benzene, methane) to display its structure in AR.
          """)
 
 # Input: Molecule Name
-molecule_name = st.text_input("Enter Molecule Name", "benzene")
+molecule_name = st.text_input("Enter Molecule Name", "")
 
-# Get the corresponding SMILES string for the molecule
-smiles = molecule_to_smiles(molecule_name)
+if molecule_name:
+    # Fetch the SMILES string from PubChem API
+    smiles = get_smiles_from_pubchem(molecule_name)
 
-# Display the AR Viewer with the corresponding molecule
-if smiles:
-    ar_html = ar_viewer_html(smiles)
-    st.components.v1.html(ar_html, height=600)
-else:
-    st.warning("Invalid molecule name. Please try one of these: benzene, methane, ethanol, acetone, glucose.")
+    if smiles:
+        # Display the AR Viewer with the corresponding molecule
+        ar_html = ar_viewer_html(smiles)
+        st.components.v1.html(ar_html, height=600)
+    else:
+        st.warning("Could not fetch the molecule's SMILES string. Please try a different name.")
