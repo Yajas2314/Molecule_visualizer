@@ -60,7 +60,7 @@ if molecule_name:
     # Fetch the SMILES string from PubChem API
     smiles = get_smiles_from_pubchem(molecule_name)
 
-    if smiles:
+if smiles:
         # Display the 3D viewer
         st.write("3D Model of the Molecule:")
         
@@ -95,5 +95,5 @@ if molecule_name:
 
         # Use Streamlit to display AR viewer HTML
         st.components.v1.html(ar_html, height=600)
-    else:
-        st.warning("Could not fetch the molecule's SMILES string. Please try a different name.")
+else:
+          st.warning("Could not fetch the molecule's SMILES string. Please try a different name.")
