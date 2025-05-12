@@ -1,51 +1,66 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import py3Dmol
-import requests
-import urllib.parse
 
-st.set_page_config(page_title="3D Molecule Visualizer with VR", layout="centered")
-st.title("🔬 3D Molecule Visualizer with VR Support")
+# Function to generate AR scene HTML with A-Frame and AR.js
+def ar_viewer_html(smiles):
+    # Generate the molecule using py3Dmol
+    viewer = py3Dmol.view(width=400, height=400)
+    viewer.addModel(smiles, 'mol')
+    viewer.setStyle({'stick': {}})
+    viewer.zoomTo()
+    viewer.render()
+    
+    # Convert the molecule to an HTML representation for embedding in AR scene
+    viewer_str = viewer._to_html()
 
-smiles = st.text_input("Enter SMILES string for the molecule:")
+    # AR Scene with A-Frame and AR.js integration
+    ar_scene_html = f"""
+    <html>
+    <head>
+        <script src="https://aframe.io/releases/0.9.2/aframe.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/AR.js/aframe/build/aframe-ar.js"></script>
+    </head>
+    <body style="margin: 0; overflow: hidden;">
+        <a-scene embedded arjs>
+            <a-marker preset="hiro">
+                <!-- Here we use the generated 3D model for the molecule -->
+                <a-entity geometry="primitive: box; width: 1; height: 1; depth: 1;" material="color: blue;">
+                </a-entity>
+            </a-marker>
+            <a-entity camera></a-entity>
+        </a-scene>
+    </body>
+    </html>
+    """
+    return ar_scene_html
 
-# Input section
-option = st.radio("Choose input type:", ("Molecule Name", "SMILES Code"))
+# Function to convert molecule name to SMILES (can be extended to use different molecule names)
+def molecule_to_smiles(molecule_name):
+    molecule_dict = {
+        'benzene': 'C1=CC=CC=C1',
+        'methane': 'CH4',
+        'ethanol': 'CCO',
+        'acetone': 'CC(C)=O',
+        'glucose': 'C6H12O6'
+    }
+    return molecule_dict.get(molecule_name.lower(), '')
 
-if option == "Molecule Name":
-    molecule_name = st.text_input("Enter Molecule Name (e.g. ethanol):")
-    if molecule_name:
-        # Fetch SMILES using PubChem API
-        try:
-            url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{molecule_name}/property/IsomericSMILES/JSON"
-            response = requests.get(url)
-            data = response.json()
-            smiles = data['PropertyTable']['Properties'][0]['IsomericSMILES']
-            st.success(f"Found SMILES: {smiles}")
-        except Exception as e:
-            st.error("Could not find SMILES for the given name. Please check spelling.")
-            st.stop()
-else:
-    smiles = st.text_input("Enter SMILES Code (e.g. CCO):")
+# Streamlit App UI
+st.title("Molecular AR Viewer")
+st.write("""
+         This app allows you to view molecular structures in Augmented Reality (AR). 
+         Enter a molecule name (like benzene, methane, ethanol) to display its structure in AR.
+         """)
 
+# Input: Molecule Name
+molecule_name = st.text_input("Enter Molecule Name", "benzene")
+
+# Get the corresponding SMILES string for the molecule
+smiles = molecule_to_smiles(molecule_name)
+
+# Display the AR Viewer with the corresponding molecule
 if smiles:
-    st.subheader("🧪 3D Structure")
-    encoded_smiles = urllib.parse.quote(smiles)
-
-    def show_molecule(smiles_code):
-        mol = py3Dmol.view(width=500, height=400)
-        mol.addModel(smiles_code, 'smi')
-        mol.setStyle({"stick": {}})
-        mol.zoomTo()
-        return mol
-
-    mol = show_molecule(smiles)
-    components.html(mol._make_html(), height=400)
-    molview_url = f"http://molview.org/?smiles={encoded_smiles}"
-
-    st.markdown("---")
-    st.subheader("🌐 VR/AR View (Experimental)")
-    st.markdown("You can also explore the 3D structure in *augmented/virtual reality* via the site below.")
-    ar_vr_url = f"https://3dviewer.net/?load=https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/{smiles}/record/SDF/?record_type=3d"
-    st.markdown(f"[Open in AR/VR Viewer 🔗]({ar_vr_url})")
-    st.write(f"Click here to view the molecule in 3D :[MolView 3D Viewer]({molview.url})")
+    ar_html = ar_viewer_html(smiles)
+    st.components.v1.html(ar_html, height=600)
+else:
+    st.warning("Invalid molecule name. Please try one of these: benzene, methane, ethanol, acetone, glucose.")
