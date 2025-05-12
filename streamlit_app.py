@@ -1,61 +1,48 @@
 import streamlit as st
 import py3Dmol
+import requests
 
-# Set up Streamlit page
-st.set_page_config(page_title="Molecule Visualizer with AR/VR", layout="centered")
-st.title("🔬 Molecule Visualizer with 3D + Virtual Reality")
+st.set_page_config(page_title="3D Molecule Visualizer", layout="wide")
 
-# Input mode
-input_type = st.radio("Choose your input method:", ["Molecule Name", "SMILES Code"])
+st.title("🔬 3D Molecule Visualizer (Name or SMILES)")
+st.write("Enter a molecule name (e.g., water, glucose) or a SMILES string (e.g., CCO)")
 
-user_input = st.text_input(f"Enter the {input_type.lower()}:")
+user_input = st.text_input("Molecule Name or SMILES", "")
 
-# Dictionary of molecule name to SMILES
-molecule_dict = {
-    "water": "O",
-    "ethanol": "CCO",
-    "benzene": "c1ccccc1",
-    "methane": "C",
-    "acetone": "CC(=O)C",
-    "glucose": "C(C1C(C(C(C(O1)O)O)O)O)O",
-}
+def fetch_smiles_from_name(name):
+    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/CanonicalSMILES/TXT"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.text.strip()
+    return None
 
-# On button click
-if st.button("🔍 Visualize Molecule"):
-    if not user_input:
-        st.error("❗ Please enter a molecule name or SMILES code.")
+def show_molecule(smiles):
+    mol = py3Dmol.view(width=500, height=500)
+    mol.addModel(f'{smiles}', 'smi')
+    mol.setStyle({'stick': {}})
+    mol.zoomTo()
+    mol.show()
+    return mol
+
+if user_input:
+    if any(c in user_input for c in ['=', '#', '(', ')', '[', ']', '@', '+', '-', '/', '\\']) or len(user_input) > 20:
+        # Looks like a SMILES
+        smiles = user_input
     else:
-        if input_type == "Molecule Name":
-            smiles = molecule_dict.get(user_input.lower())
-            if not smiles:
-                st.error("❌ Molecule name not found in database.")
-                st.info("Try using a SMILES code instead.")
-                st.stop()
+        # Try converting name to SMILES
+        smiles = fetch_smiles_from_name(user_input)
+        if not smiles:
+            st.error("Could not find a molecule for that name.")
         else:
-            smiles = user_input.strip()
+            st.success(f"Found SMILES: {smiles}")
 
-        # Show 3D molecule
-        st.subheader("🧪 Interactive 3D Molecule Viewer")
-        viewer = py3Dmol.view(width=500, height=400)
-        viewer.addModel(smiles, "smi")
-        viewer.setStyle({"stick": {}})
-        viewer.zoomTo()
-        st.components.v1.html(viewer._make_html(), height=400)
+    if smiles:
+        st.subheader("🧪 3D Structure")
+        mol = show_molecule(smiles)
+        mol.show()
+        py3Dmol.render(mol)
 
-        # VR/AR section
-        st.subheader("🌐 Virtual Reality Molecule View (AR Supported)")
-
-        st.markdown("""
-        <model-viewer 
-            src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-            alt="3D molecule model"
-            ar 
-            auto-rotate 
-            camera-controls 
-            style="width: 100%; height: 500px;">
-        </model-viewer>
-
-        <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-        """, unsafe_allow_html=True)
-
-        st.caption("ℹ️ You can upload your own .glb file or replace the model URL above to show a real molecule.")
+# VR/AR section
+       st.markdown("### 🌐 Want to see it in AR/VR?")
+       ar_url = f"https://3dviewer.net/#modelurl=https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/{smiles}/SDF"
+        st.markdown(f"[Click here to view in 3D AR/VR Viewer 🚀]({ar_url})")
