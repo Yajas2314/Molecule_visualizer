@@ -72,6 +72,25 @@ if molecule_name:
 
         # Display AR Viewer with placeholder model
         st.write("AR Viewer (Placeholder Model):")
+        
+        def ar_viewer_html_with_model(model_url):
+    return f"""
+    <html>
+    <head>
+        <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.min.js"></script>
+    </head>
+    <body style="margin: 0; overflow: hidden;">
+        <a-scene embedded arjs>
+            <a-marker preset="hiro">
+                <a-entity gltf-model="{model_url}" scale="0.5 0.5 0.5" rotation="0 0 0" position="0 0 0"></a-entity>
+            </a-marker>
+            <a-entity camera></a-entity>
+        </a-scene>
+    </body>
+    </html>
+    """
+        
         ar_html = ar_viewer_html()
 
         # Use Streamlit to display AR viewer HTML
