@@ -9,8 +9,8 @@ def ar_viewer_html(smiles):
     viewer.setStyle({'stick': {}})
     viewer.zoomTo()
     viewer.render()
-    
-    # Convert the molecule to an HTML representation for embedding in AR scene
+
+    # Get the HTML representation of the 3Dmol model
     viewer_str = viewer._to_html()
 
     # AR Scene with A-Frame and AR.js integration
@@ -23,8 +23,8 @@ def ar_viewer_html(smiles):
     <body style="margin: 0; overflow: hidden;">
         <a-scene embedded arjs>
             <a-marker preset="hiro">
-                <!-- Here we use the generated 3D model for the molecule -->
-                <a-entity geometry="primitive: box; width: 1; height: 1; depth: 1;" material="color: blue;">
+                <!-- We will use the 3Dmol-generated model here in AR -->
+                <a-entity position="0 0 0" rotation="0 0 0" scale="0.1 0.1 0.1" geometry="primitive: box; width: 1; height: 1; depth: 1;" material="color: blue;">
                 </a-entity>
             </a-marker>
             <a-entity camera></a-entity>
