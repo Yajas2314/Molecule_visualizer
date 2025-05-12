@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import py3Dmol
 import requests
+import urllib.parse
 
 st.set_page_config(page_title="3D Molecule Visualizer with VR", layout="centered")
 st.title("🔬 3D Molecule Visualizer with VR Support")
@@ -29,6 +30,7 @@ else:
 
 if smiles:
     st.subheader("🧪 3D Structure")
+    encoded_smiles = urllib.parse.quote(smiles)
 
     def show_molecule(smiles_code):
         mol = py3Dmol.view(width=500, height=400)
@@ -39,9 +41,11 @@ if smiles:
 
     mol = show_molecule(smiles)
     components.html(mol._make_html(), height=400)
+    molview_url = f"http://molview.org/?smiles={encoded_smiles}"
 
     st.markdown("---")
     st.subheader("🌐 VR/AR View (Experimental)")
     st.markdown("You can also explore the 3D structure in *augmented/virtual reality* via the site below.")
     ar_vr_url = f"https://3dviewer.net/?load=https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/{smiles}/record/SDF/?record_type=3d"
     st.markdown(f"[Open in AR/VR Viewer 🔗]({ar_vr_url})")
+    st.write(f"Click here to view the molecule in 3D :[MolView 3D Viewer]({molview.url})")
