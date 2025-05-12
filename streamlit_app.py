@@ -15,20 +15,17 @@ def get_smiles_from_pubchem(molecule_name):
         return None
 
 # Function to generate AR scene HTML with A-Frame and AR.js
-def ar_viewer_html():
-    # AR Scene with A-Frame and AR.js integration
-    ar_scene_html = """
+def ar_viewer_html_with_model(model_url):
+    ar_scene_html = f"""
     <html>
     <head>
-        <script src="https://aframe.io/releases/0.9.2/aframe.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/gh/jeromeetienne/AR.js/aframe/build/aframe-ar.js"></script>
+        <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.min.js"></script>
     </head>
     <body style="margin: 0; overflow: hidden;">
         <a-scene embedded arjs>
             <a-marker preset="hiro">
-                <!-- Placeholder 3D model (box) for AR -->
-                <a-entity position="0 0 0" rotation="0 0 0" scale="0.1 0.1 0.1" geometry="primitive: box; width: 1; height: 1; depth: 1;" material="color: blue;">
-                </a-entity>
+                <a-entity gltf-model="{model_url}" scale="0.5 0.5 0.5" rotation="0 0 0" position="0 0 0"></a-entity>
             </a-marker>
             <a-entity camera></a-entity>
         </a-scene>
