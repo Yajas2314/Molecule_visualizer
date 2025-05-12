@@ -1,54 +1,61 @@
 import streamlit as st
-import requests
-from PIL import Image
-from io import BytesIO
+import py3Dmol
 
-# Function to get SMILES code from molecule name
-def get_smiles_from_name(name):
-    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/CanonicalSMILES/json"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        try:
-            smiles = data['PropertyTable']['Properties'][0]['CanonicalSMILES']
-            return smiles
-        except KeyError:
-            return None
-    return None
+# Set up Streamlit page
+st.set_page_config(page_title="Molecule Visualizer with AR/VR", layout="centered")
+st.title("🔬 Molecule Visualizer with 3D + Virtual Reality")
 
-# Streamlit UI setup
-st.set_page_config(page_title="Molecule Visualizer", layout="centered")
-st.title("🧪 Molecule Structure Viewer")
+# Input mode
+input_type = st.radio("Choose your input method:", ["Molecule Name", "SMILES Code"])
 
-# Option for SMILES code or molecule name
-option = st.radio("Choose input type", ["SMILES Code", "Molecule Name"])
+user_input = st.text_input(f"Enter the {input_type.lower()}:")
 
-if option == "SMILES Code":
-    smiles = st.text_input("Enter SMILES Code (e.g., CCO for Ethanol)", "CCO")
-    molecule_name = ""
-else:
-    molecule_name = st.text_input("Enter Molecule Name (e.g., Ethanol)")
-    smiles = ""
+# Dictionary of molecule name to SMILES
+molecule_dict = {
+    "water": "O",
+    "ethanol": "CCO",
+    "benzene": "c1ccccc1",
+    "methane": "C",
+    "acetone": "CC(=O)C",
+    "glucose": "C(C1C(C(C(C(O1)O)O)O)O)O",
+}
 
-if smiles or molecule_name:
-    try:
-        # If molecule name is provided, fetch its SMILES code
-        if molecule_name:
-            smiles = get_smiles_from_name(molecule_name)
-            if smiles is None:
-                st.error(f"❌ Could not find SMILES for {molecule_name}.")
+# On button click
+if st.button("🔍 Visualize Molecule"):
+    if not user_input:
+        st.error("❗ Please enter a molecule name or SMILES code.")
+    else:
+        if input_type == "Molecule Name":
+            smiles = molecule_dict.get(user_input.lower())
+            if not smiles:
+                st.error("❌ Molecule name not found in database.")
+                st.info("Try using a SMILES code instead.")
                 st.stop()
-            else:
-                st.write(f"Found SMILES for {molecule_name}: {smiles}")
-
-        # Fetch molecule image from NCI's Cactus API
-        url = f"https://cactus.nci.nih.gov/chemical/structure/{smiles}/image"
-        response = requests.get(url)
-
-        if response.status_code == 200:
-            img = Image.open(BytesIO(response.content))
-            st.image(img, caption=f"Structure of {smiles}")
         else:
-            st.error("❌ Invalid SMILES or unable to fetch image.")
-    except Exception as e:
-        st.error(f"⚠️ Error: {e}")
+            smiles = user_input.strip()
+
+        # Show 3D molecule
+        st.subheader("🧪 Interactive 3D Molecule Viewer")
+        viewer = py3Dmol.view(width=500, height=400)
+        viewer.addModel(smiles, "smi")
+        viewer.setStyle({"stick": {}})
+        viewer.zoomTo()
+        st.components.v1.html(viewer._make_html(), height=400)
+
+        # VR/AR section
+        st.subheader("🌐 Virtual Reality Molecule View (AR Supported)")
+
+        st.markdown("""
+        <model-viewer 
+            src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+            alt="3D molecule model"
+            ar 
+            auto-rotate 
+            camera-controls 
+            style="width: 100%; height: 500px;">
+        </model-viewer>
+
+        <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+        """, unsafe_allow_html=True)
+
+        st.caption("ℹ️ You can upload your own .glb file or replace the model URL above to show a real molecule.")
