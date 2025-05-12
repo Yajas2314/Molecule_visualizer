@@ -43,6 +43,6 @@ if user_input:
         py3Dmol.render(mol)
 
 # VR/AR section
-       st.markdown("### 🌐 Want to see it in AR/VR?")
-       ar_url = f"https://3dviewer.net/#modelurl=https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/{smiles}/SDF"
-        st.markdown(f"[Click here to view in 3D AR/VR Viewer 🚀]({ar_url})")
+    st.markdown("### 🌐 Want to see it in AR/VR?")
+    ar_url = f"https://3dviewer.net/#modelurl=https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/{smiles}/SDF"
+    st.markdown(f"[Click here to view in 3D AR/VR Viewer 🚀]({ar_url})")
