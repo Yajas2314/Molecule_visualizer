@@ -73,7 +73,7 @@ if smiles:
         # Display AR Viewer with placeholder model
         st.write("AR Viewer (Placeholder Model):")
         
-    def ar_viewer_html_with_model(model_url):
+def ar_viewer_html_with_model(model_url):
         return f"""
         <html>
         <head>
