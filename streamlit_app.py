@@ -43,9 +43,8 @@ def generate_3Dmol_visualization(smiles):
     viewer.addModel(smiles, 'mol')
     viewer.setStyle({'stick': {}})
     viewer.zoomTo()
-    viewer.render()
-
-    return viewer._to_html()
+    # Generate the HTML output of the molecule viewer
+    return viewer.to_html()
 
 # Streamlit App UI
 st.title("Molecular AR Viewer")
