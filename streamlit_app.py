@@ -12,7 +12,7 @@ def get_smiles_from_pubchem(molecule_name):
         return response.text.strip()  # Return the SMILES string
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching SMILES for {molecule_name}: {e}")
-        return ""
+        return None
 
 # Function to generate AR scene HTML with A-Frame and AR.js
 def ar_viewer_html():
@@ -39,13 +39,13 @@ def ar_viewer_html():
 
 # Function to generate 3Dmol visualization of the molecule
 def generate_3Dmol_visualization(smiles):
-    viewer = py3Dmol.view(width=400, height=400)
+    viewer = py3Dmol.view(width=800, height=400)
     viewer.addModel(smiles, 'mol')
     viewer.setStyle({'stick': {}})
     viewer.zoomTo()
     viewer.render()
 
-    # Generate the HTML output of the molecule viewer
+    # Get the HTML content of the viewer
     html_output = viewer._jsViewer
     return html_output
 
@@ -66,14 +66,18 @@ if molecule_name:
     if smiles:
         # Display the 3D viewer
         st.write("3D Model of the Molecule:")
+        
+        # Generate the 3Dmol visualization
         molecule_html = generate_3Dmol_visualization(smiles)
 
-        # Use Streamlit's components.v1.html to display the 3Dmol viewer HTML
+        # Use Streamlit to display the 3Dmol HTML
         st.components.v1.html(molecule_html, height=400)
 
         # Display AR Viewer with placeholder model
         st.write("AR Viewer (Placeholder Model):")
         ar_html = ar_viewer_html()
+
+        # Use Streamlit to display AR viewer HTML
         st.components.v1.html(ar_html, height=600)
     else:
         st.warning("Could not fetch the molecule's SMILES string. Please try a different name.")
