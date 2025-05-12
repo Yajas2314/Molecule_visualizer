@@ -6,6 +6,8 @@ import requests
 st.set_page_config(page_title="3D Molecule Visualizer with VR", layout="centered")
 st.title("🔬 3D Molecule Visualizer with VR Support")
 
+smiles = st.text_input("Enter SMILES string for the molecule:")
+
 # Input section
 option = st.radio("Choose input type:", ("Molecule Name", "SMILES Code"))
 
