@@ -15,19 +15,9 @@ def get_smiles_from_pubchem(molecule_name):
         return ""
 
 # Function to generate AR scene HTML with A-Frame and AR.js
-def ar_viewer_html(smiles):
-    # Generate the molecule using py3Dmol
-    viewer = py3Dmol.view(width=400, height=400)
-    viewer.addModel(smiles, 'mol')
-    viewer.setStyle({'stick': {}})
-    viewer.zoomTo()
-    viewer.render()
-
-    # Get the HTML representation of the 3Dmol model
-    viewer_str = viewer._to_html()
-
+def ar_viewer_html():
     # AR Scene with A-Frame and AR.js integration
-    ar_scene_html = f"""
+    ar_scene_html = """
     <html>
     <head>
         <script src="https://aframe.io/releases/0.9.2/aframe.min.js"></script>
@@ -36,6 +26,7 @@ def ar_viewer_html(smiles):
     <body style="margin: 0; overflow: hidden;">
         <a-scene embedded arjs>
             <a-marker preset="hiro">
+                <!-- Placeholder 3D model (box) for AR -->
                 <a-entity position="0 0 0" rotation="0 0 0" scale="0.1 0.1 0.1" geometry="primitive: box; width: 1; height: 1; depth: 1;" material="color: blue;">
                 </a-entity>
             </a-marker>
@@ -45,6 +36,16 @@ def ar_viewer_html(smiles):
     </html>
     """
     return ar_scene_html
+
+# Function to generate 3Dmol visualization of the molecule
+def generate_3Dmol_visualization(smiles):
+    viewer = py3Dmol.view(width=400, height=400)
+    viewer.addModel(smiles, 'mol')
+    viewer.setStyle({'stick': {}})
+    viewer.zoomTo()
+    viewer.render()
+
+    return viewer._to_html()
 
 # Streamlit App UI
 st.title("Molecular AR Viewer")
@@ -61,8 +62,14 @@ if molecule_name:
     smiles = get_smiles_from_pubchem(molecule_name)
 
     if smiles:
-        # Display the AR Viewer with the corresponding molecule
-        ar_html = ar_viewer_html(smiles)
+        # Display the 3D viewer
+        st.write("3D Model of the Molecule:")
+        molecule_html = generate_3Dmol_visualization(smiles)
+        st.components.v1.html(molecule_html, height=400)
+
+        # Display AR Viewer with placeholder model
+        st.write("AR Viewer (Placeholder Model):")
+        ar_html = ar_viewer_html()
         st.components.v1.html(ar_html, height=600)
     else:
         st.warning("Could not fetch the molecule's SMILES string. Please try a different name.")
