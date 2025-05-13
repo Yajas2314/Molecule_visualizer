@@ -62,13 +62,10 @@ if molecule_name:
 if smiles:
         # Display the 3D viewer
         st.write("3D Model of the Molecule:")
-        
         # Generate the 3Dmol visualization
         molecule_html = generate_3Dmol_visualization(smiles)
-
         # Use Streamlit to display the 3Dmol HTML
         st.components.v1.html(molecule_html, height=400)
-
         # Display AR Viewer with placeholder model
         st.write("AR Viewer (Placeholder Model):")
         
