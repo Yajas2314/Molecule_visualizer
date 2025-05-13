@@ -17,6 +17,15 @@ import py3Dmol
 import tempfile
 import subprocess
 
+smiles_input = st.text_input("Enter SMILES code (optional):")
+
+if smiles :
+     smiles = smiles_input.strip()
+elif:
+     smiles = get_smiles_from_name(molecule_name)
+else:
+     smiles = None
+
 st.set_page_config(layout="wide")
 st.title("AR Chemistry Molecule Visualizer 🌐🧪")
 
