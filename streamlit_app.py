@@ -16,7 +16,7 @@ def get_smiles_from_pubchem(molecule_name):
 
 # Function to generate AR scene HTML with A-Frame and AR.js
 def ar_viewer_html_with_model(model_url):
-    ar_scene_html = f"""
+    return f"""
     <html>
     <head>
         <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
