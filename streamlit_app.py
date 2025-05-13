@@ -95,5 +95,4 @@ def ar_viewer_html_with_model(model_url):
 
         # Use Streamlit to display AR viewer HTML
         st.components.v1.html(ar_html, height=600)
-else:
-          st.warning("Could not fetch the molecule's SMILES string. Please try a different name.")
+          
