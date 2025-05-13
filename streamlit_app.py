@@ -6,7 +6,7 @@ from pathlib import Path
 # Define paths
 base_dir = Path("/mnt/data/ar_molecule_streamlit_fixed")
 base_dir.mkdir(exist_ok=True)
-script_path = base_dir / "app.py"
+script_path = base_dir / "streamlit_app.py"
 readme_path = base_dir / "README.md"
 
 # Corrected Streamlit code with proper HTML embedding
@@ -96,4 +96,4 @@ This app lets you:
 
 ## Run
 ```bash
-streamlit run app.py
+streamlit run streamlit_app.py
