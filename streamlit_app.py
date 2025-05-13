@@ -18,6 +18,7 @@ import tempfile
 import subprocess
 
 smiles_input = st.text_input("Enter SMILES code (optional):")
+molecule_name = st.text_input("Enter molecule name:")
 
 if smiles :
      smiles = smiles_input.strip()
