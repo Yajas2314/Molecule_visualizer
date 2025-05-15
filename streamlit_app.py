@@ -1,49 +1,48 @@
 import streamlit as st
 import py3Dmol
+from urllib.parse import quote
 import requests
 
-st.set_page_config(page_title="3D Molecule Visualizer", layout="centered")
-
-st.title("🧪 3D Molecule Visualizer with AR/VR")
-
-# Input from user
-input_option = st.radio("Select Input Type:", ("Molecule Name", "SMILES Code"))
-
-if input_option == "Molecule Name":
-    molecule_name = st.text_input("Enter Molecule Name (e.g., ethanol, benzene):")
-else:
-    smiles = st.text_input("Enter SMILES Code (e.g., CCO for ethanol):")
-
-# Function to fetch SMILES from name using PubChem
 def get_smiles_from_name(name):
-    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/JSON"
-    try:
-        res = requests.get(url)
-        res.raise_for_status()
-        data = res.json()
-        return data["PropertyTable"]["Properties"][0]["IsomericSMILES"]
-    except Exception:
-        return None
+    """Fetch SMILES code from molecule name using PubChem."""
+    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{quote(name)}/property/IsomericSMILES/JSON"
+    response = requests.get(url)
+    if response.status_code == 200:
+        try:
+            data = response.json()
+            smiles = data['PropertyTable']['Properties'][0]['IsomericSMILES']
+            return smiles
+        except Exception:
+            return None
+    return None
 
-# Function to show 3D molecule using py3Dmol
-def show_molecule(smiles_str):
-    mol_view = py3Dmol.view(width=500, height=400)
-    mol_view.addModel(smiles_str, "smi")
-    mol_view.setStyle({"stick": {}, "sphere": {"scale": 0.3}})
-    mol_view.zoomTo()
-    return mol_view
+def show_molecule(smiles):
+    """Render 3D molecule using py3Dmol."""
+    mol = py3Dmol.view(width=400, height=400)
+    mol.addModel(smiles, "smi")
+    mol.setStyle({'stick': {}})
+    mol.zoomTo()
+    return mol
 
-# Run if input is given
-if (input_option == "Molecule Name" and molecule_name) or (input_option == "SMILES Code" and smiles):
-    if input_option == "Molecule Name":
-        smiles = get_smiles_from_name(molecule_name)
+st.title("🧪 Molecule Visualizer")
+input_type = st.radio("Choose input method:", ("Molecule Name", "SMILES Code"))
+
+if input_type == "Molecule Name":
+    name = st.text_input("Enter molecule name:")
+    if name:
+        smiles = get_smiles_from_name(name)
         if smiles:
-            st.success(f"Found SMILES: {smiles}")
+            st.success(f"Found SMILES: `{smiles}`")
+            st.subheader("3D Structure")
+            mol = show_molecule(smiles)
+            mol_html = mol._make_html()
+            st.components.v1.html(mol_html, height=400)
         else:
-            st.error("Molecule not found. Please check the spelling.")
-            st.stop()
-
-    st.subheader("🔬 3D Structure")
-    viewer = show_molecule(smiles)
-    viewer_html = viewer._make_html()
-    st.components.v1.html(viewer_html, height=400)
+            st.error("Could not fetch SMILES for the given molecule name.")
+else:
+    smiles = st.text_input("Enter SMILES code:")
+    if smiles:
+        st.subheader("3D Structure")
+        mol = show_molecule(smiles)
+        mol_html = mol._make_html()
+        st.components.v1.html(mol_html, height=400)
