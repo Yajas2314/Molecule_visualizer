@@ -3,10 +3,10 @@ import py3Dmol
 import requests
 
 # --- Page settings ---
-st.set_page_config(page_title="3D Molecule Viewer", layout="wide")
+st.set_page_config(page_title="3D Molecule Viewer", layout="centered")
 st.title("🧪 3D Molecule Visualizer")
 
-# --- Function to get SMILES from molecule name using PubChem ---
+# --- Function to get SMILES from molecule name ---
 def get_smiles_from_name(name):
     try:
         url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/CanonicalSMILES/JSON"
@@ -16,7 +16,7 @@ def get_smiles_from_name(name):
     except Exception:
         return None
 
-# --- Function to generate 3D HTML view from SMILES ---
+# --- Function to generate 3D molecule viewer HTML ---
 def generate_3d_view(smiles):
     view = py3Dmol.view(width=500, height=500)
     view.addModel(smiles, 'smi')
@@ -24,12 +24,12 @@ def generate_3d_view(smiles):
     view.zoomTo()
     return view._make_html()
 
-# --- Sidebar inputs ---
-st.sidebar.header("Input")
+# --- Sidebar input ---
+st.sidebar.header("Input Molecule")
 molecule_name = st.sidebar.text_input("Enter Molecule Name (e.g. glucose):")
 smiles_input = st.sidebar.text_input("Or Enter SMILES Code (e.g. C(CO)O):")
 
-# --- Determine which input to use ---
+# --- Choose input ---
 if smiles_input:
     smiles = smiles_input.strip()
 elif molecule_name:
@@ -37,14 +37,12 @@ elif molecule_name:
 else:
     smiles = None
 
-# --- Output section ---
+# --- Display ---
 if smiles:
-    st.subheader("🔬 3D Structure")
-    try:
-        mol_html = generate_3d_view(smiles)
-        st.components.v1.html(mol_html, height=520)
-        st.success(f"SMILES: {smiles}")
-    except Exception as e:
-        st.error(f"Could not render molecule. Error: {e}")
+    st.subheader("🔬 3D Structure Viewer")
+    html = generate_3d_view(smiles)
+    with st.container():
+        st.components.v1.html(html, height=520)
+    st.code(smiles, language='text')
 else:
     st.info("Please enter a molecule name or SMILES code in the sidebar.")
