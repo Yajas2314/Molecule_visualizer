@@ -1,72 +1,113 @@
 import streamlit as st
-import requests
 import py3Dmol
 from rdkit import Chem
 from rdkit.Chem import AllChem
+import requests
 
 st.set_page_config(layout="wide")
-st.title("🔬 Enhanced 3D Molecule Visualizer")
+st.title("🔬 3D Molecule Viewer with Atom Colors, Labels & Lone Pairs")
 
-# Input type
 input_type = st.radio("Input Type", ("Molecule Name", "SMILES"))
 user_input = st.text_input(f"Enter the {input_type}:")
 
-# Get SMILES from molecule name
+# Atom-specific colors
+atom_colors = {
+    "H": "white",
+    "C": "gray",
+    "N": "blue",
+    "O": "red",
+    "F": "green",
+    "Cl": "green",
+    "Br": "brown",
+    "I": "purple",
+    "S": "yellow",
+    "P": "orange"
+}
+
 def get_smiles_from_name(name):
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/TXT"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.text.strip()
+    res = requests.get(url)
+    if res.status_code == 200:
+        return res.text.strip()
     return None
 
-# Show 3D Molecule with full atoms and lone pairs
-def show_3d_molecule_with_lone_pairs(smiles):
+def generate_3d_structure(smiles):
     mol = Chem.MolFromSmiles(smiles)
-    mol = Chem.AddHs(mol)  # Add explicit hydrogens
-    AllChem.EmbedMolecule(mol)
+    mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol, AllChem.ETKDG())
     AllChem.UFFOptimizeMolecule(mol)
-
-    # Get XYZ coordinates
     conf = mol.GetConformer()
-    xyz = ""
-    for atom in mol.GetAtoms():
-        pos = conf.GetAtomPosition(atom.GetIdx())
-        xyz += f"{atom.GetSymbol()} {pos.x:.4f} {pos.y:.4f} {pos.z:.4f}\n"
 
-        # Simulate lone pairs (O, N, F, Cl)
-        if atom.GetSymbol() in ["O", "N", "F", "Cl"]:
-            # Add 1–2 dots near these atoms
-            lp_x = pos.x + 0.3
-            lp_y = pos.y + 0.3
-            lp_z = pos.z
-            xyz += f"X {lp_x:.4f} {lp_y:.4f} {lp_z:.4f}\n"
-
-    # Visualize in py3Dmol
     view = py3Dmol.view(width=800, height=500)
-    view.addModel(xyz, "xyz")
-    view.setStyle({
-        "stick": {},
-        "sphere": {"scale": 0.3},
-        "nonbonded": {"color": "gray"}
-    })
-    view.setBackgroundColor("white")
+    for atom in mol.GetAtoms():
+        idx = atom.GetIdx()
+        pos = conf.GetAtomPosition(idx)
+        sym = atom.GetSymbol()
+        color = atom_colors.get(sym, "lightgray")
+
+        # Atom as sphere
+        view.addSphere({
+            'center': {'x': pos.x, 'y': pos.y, 'z': pos.z},
+            'radius': 0.3,
+            'color': color,
+            'opacity': 1.0
+        })
+
+        # Atom label
+        view.addLabel(sym, {
+            'position': {'x': pos.x, 'y': pos.y, 'z': pos.z},
+            'backgroundColor': 'black',
+            'fontColor': 'white',
+            'fontSize': 10
+        })
+
+        # Lone pairs for O, N, F, Cl
+        if sym in ["O", "N", "F", "Cl"]:
+            lp1 = (pos.x + 0.4, pos.y + 0.3, pos.z)
+            lp2 = (pos.x - 0.3, pos.y - 0.3, pos.z)
+            view.addSphere({
+                'center': {'x': lp1[0], 'y': lp1[1], 'z': lp1[2]},
+                'radius': 0.1,
+                'color': 'lightgray',
+                'opacity': 1.0
+            })
+            view.addSphere({
+                'center': {'x': lp2[0], 'y': lp2[1], 'z': lp2[2]},
+                'radius': 0.1,
+                'color': 'lightgray',
+                'opacity': 1.0
+            })
+
+    # Bonds as sticks
+    for bond in mol.GetBonds():
+        begin_idx = bond.GetBeginAtomIdx()
+        end_idx = bond.GetEndAtomIdx()
+        begin_pos = conf.GetAtomPosition(begin_idx)
+        end_pos = conf.GetAtomPosition(end_idx)
+        view.addCylinder({
+            'start': {'x': begin_pos.x, 'y': begin_pos.y, 'z': begin_pos.z},
+            'end': {'x': end_pos.x, 'y': end_pos.y, 'z': end_pos.z},
+            'radius': 0.1,
+            'color': 'gray',
+            'opacity': 1.0
+        })
+
+    view.setBackgroundColor('white')
     view.zoomTo()
     return view
 
-# MAIN APP
 if user_input:
     if input_type == "Molecule Name":
         smiles = get_smiles_from_name(user_input)
         if not smiles:
-            st.error("Could not find SMILES for this molecule.")
+            st.error("❌ Could not find SMILES for this molecule.")
         else:
-            st.success(f"SMILES: {smiles}")
+            st.success(f"✅ SMILES: {smiles}")
     else:
-        smiles = user_input
+        smiles = user_input.strip()
 
     if smiles:
-        st.subheader("🧬 3D Structure with Lone Pairs")
-        viewer = show_3d_molecule_with_lone_pairs(smiles)
-        html = viewer._make_html()
-        st.components.v1.html(html, height=500, width=800)
-        st.info("Atoms, Hydrogens, and Lone Pair dots are visualized.")
+        st.subheader("🧬 3D Structure")
+        mol_view = generate_3d_structure(smiles)
+        mol_html = mol_view._make_html()
+        st.components.v1.html(mol_html, height=500, width=800)
