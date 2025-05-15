@@ -1,86 +1,68 @@
 import streamlit as st
-import py3dmol
-import pubchempy as pcp
+import py3Dmol
+import requests
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
+# Get SMILES from PubChem using molecule name
 def get_smiles_from_name(name):
-    try:
-        compounds = pcp.get_compounds(name, 'name')
-        if compounds:
-            return compounds[0].canonical_smiles
-    except:
-        return None
+    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/TXT"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.text.strip()
+    return None
 
-def add_hydrogens(smiles):
-    mol = Chem.MolFromSmiles(smiles)
-    mol = Chem.AddHs(mol)  # Add explicit hydrogens
-    AllChem.EmbedMolecule(mol, randomSeed=0xf00d)  # 3D coords
-    AllChem.MMFFOptimizeMolecule(mol)
-    return Chem.MolToMolBlock(mol)
+# Detect bond type (very basic, can be expanded)
+def classify_compound(smiles):
+    ionic_keywords = ['[Na+]', '[Cl-]', '[K+]', '[Ca+2]', '[Mg+2]']
+    for ion in ionic_keywords:
+        if ion in smiles:
+            return "Likely Ionic"
+    return "Likely Covalent"
 
-def detect_ionic_or_covalent(smiles):
-    ionic_elements = ['Na', 'K', 'Cl', 'Br', 'I', 'Ca', 'Mg', 'Li', 'F']
-    mol = Chem.MolFromSmiles(smiles)
-    atoms = [mol.GetAtomWithIdx(i) for i in range(mol.GetNumAtoms())]
-    elements = set([atom.GetSymbol() for atom in atoms])
-    # Simple heuristic:
-    if any(e in ionic_elements for e in elements):
-        return "Likely Ionic Compound"
-    else:
-        return "Likely Covalent Compound"
-
-def get_lone_pairs_info(smiles):
-    # Simple rough estimation by valence - bonds, not 100% accurate
-    mol = Chem.MolFromSmiles(smiles)
-    lone_pairs = []
-    for atom in mol.GetAtoms():
-        symbol = atom.GetSymbol()
-        valence = Chem.GetPeriodicTable().GetDefaultValence(symbol)
-        bonds = sum([bond.GetBondTypeAsDouble() for bond in atom.GetBonds()])
-        lone_pair_count = valence - bonds
-        if lone_pair_count > 0:
-            lone_pairs.append(f"{symbol}{atom.GetIdx()} has approx {int(lone_pair_count)} lone pair(s)")
-    return lone_pairs
-
-def show_molecule(molblock, style='stick'):
-    view = py3dmol.view(width=500, height=400)
-    view.addModel(molblock, 'mol')
+# Render molecule in 3D using py3Dmol
+def show_molecule(smiles, style='stick'):
+    view = py3Dmol.view(width=500, height=400)
+    view.addModel(smiles, 'smi')
     view.setStyle({style: {}})
     view.zoomTo()
-    html = view._make_html()
-    st.components.v1.html(html, height=450)
+    return view
 
+# Streamlit app
 def main():
-    st.title("🔬 Advanced 3D Molecule Visualizer")
-    mol_name = st.text_input("Enter Molecule Name (e.g. glucose):")
-    smiles_code = st.text_input("Or Enter SMILES Code (e.g. C(CO)O):")
-    style = st.selectbox("Choose Visualization Style:", ['stick', 'line', 'sphere', 'ball'])
+    st.set_page_config(page_title="3D Molecule Visualizer", layout="wide")
+    st.markdown("<h1 style='text-align: center;'>🧪 3D Molecule Visualizer</h1>", unsafe_allow_html=True)
 
-    smiles = None
-    if mol_name:
-        smiles = get_smiles_from_name(mol_name)
-        if not smiles:
-            st.error("Molecule name not found.")
-    elif smiles_code:
-        smiles = smiles_code
+    # Sidebar inputs
+    with st.sidebar:
+        st.header("Input Molecule")
+        mol_name = st.text_input("Enter Molecule Name (e.g. glucose):")
+        mol_smiles = st.text_input("Or Enter SMILES Code (e.g. C(CO)O):")
+
+        style = st.selectbox("Choose Visualization Style:", ["stick", "line", "sphere", "cartoon", "cross"])
+
+    # Determine which SMILES to use
+    smiles = mol_smiles.strip()
+    if not smiles and mol_name:
+        smiles = get_smiles_from_name(mol_name.strip())
 
     if smiles:
-        st.write(f"**Input SMILES:** {smiles}")
+        compound_type = classify_compound(smiles)
 
-        molblock = add_hydrogens(smiles)
-        show_molecule(molblock, style)
+        st.subheader("🧬 3D Structure Viewer")
+        col1, col2 = st.columns([1, 2])
 
-        compound_type = detect_ionic_or_covalent(smiles)
-        st.info(compound_type)
+        with col1:
+            st.markdown(f"**Compound Type:** {compound_type}")
+            st.markdown(f"**SMILES Code:** `{smiles}`")
 
-        lone_pairs = get_lone_pairs_info(smiles)
-        if lone_pairs:
-            st.write("### Estimated Lone Pairs on Atoms:")
-            for lp in lone_pairs:
-                st.write(f"- {lp}")
-        else:
-            st.write("No lone pairs detected or molecule data insufficient.")
+        with col2:
+            mol_view = show_molecule(smiles, style)
+            mol_html = mol_view._make_html()
+            st.components.v1.html(mol_html, height=420, width=500)
+
+    else:
+        st.warning("Please enter a valid molecule name or SMILES code.")
 
 if __name__ == "__main__":
     main()
