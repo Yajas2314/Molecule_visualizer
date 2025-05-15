@@ -1,3 +1,5 @@
 streamlit
-py3Dmol==2.0.1
+py3dmol
 requests
+pubchempy
+rdkit
