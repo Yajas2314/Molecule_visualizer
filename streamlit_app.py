@@ -24,38 +24,35 @@ def get_smiles_from_name(name):
     except:
         return None
 
-# Function to generate 3Dmol HTML
-def show_molecule(smiles, style):
-    view = py3Dmol.view(width=700, height=500)
+# Function to show molecule
+def display_molecule(smiles, style):
+    style_dict = {
+        "Ball and Stick": {'stick': {}, 'sphere': {'scale': 0.3}},
+        "Stick": {'stick': {}},
+        "Sphere": {'sphere': {}},
+        "Line": {'line': {}}
+    }
+
+    view = py3Dmol.view(width=800, height=500)
     view.addModel(smiles, 'smi')
     view.addHydrogens()
+    view.setStyle(style_dict[style])
     view.setBackgroundColor("white")
-
-    # Apply style
-    if style == "Ball and Stick":
-        view.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
-    elif style == "Stick":
-        view.setStyle({'stick': {}})
-    elif style == "Sphere":
-        view.setStyle({'sphere': {}})
-    elif style == "Line":
-        view.setStyle({'line': {}})
-    
     view.zoomTo()
-    return view._make_html()
+    html = view._make_html()  # Generate full HTML + JS
+    st.components.v1.html(html, height=520, scrolling=False)
 
-# Determine SMILES
+# Get SMILES
 smiles = ""
 if smiles_input:
     smiles = smiles_input.strip()
 elif mol_name:
     smiles = get_smiles_from_name(mol_name.strip())
 
-# Render 3D Structure
+# Render 3D
 if smiles:
     st.markdown("### 🧬 3D Structure Below:")
-    html = show_molecule(smiles, style)
-    st.components.v1.html(html, height=520)
+    display_molecule(smiles, style)
     st.success(f"✅ Molecule Loaded: `{smiles}`")
 else:
-    st.info("ℹ️ Please enter a molecule name or SMILES code to display its 3D structure.")
+    st.info("ℹ️ Enter a molecule name or SMILES code to display its 3D structure.")
