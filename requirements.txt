@@ -1,4 +1,4 @@
 streamlit
 py3Dmol
-rdkit-pypi
+rdkit
 requests
