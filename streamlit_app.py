@@ -32,7 +32,7 @@ def detect_bond_type(smiles):
 
 # Generate 3D view with style and show lone pairs approx. (highlight electronegative atoms)
 def show_molecule(smiles, style='stick'):
-    view = py3dmol.view(query='smiles:' + smiles)
+    view = py3Dmol.view(query='smiles:' + smiles)
     # Apply chosen style
     view.setStyle({style: {}})
     
