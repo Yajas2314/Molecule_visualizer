@@ -1,5 +1,5 @@
 streamlit
-py3dmol
-requests
+py3Dmol
 pubchempy
-rdkit
+rdkit-pypi
+requests
