@@ -1,6 +1,6 @@
 import streamlit as st
 import pubchempy as pcp
-import py3dmol
+import py3Dmol
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
