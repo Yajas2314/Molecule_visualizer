@@ -23,14 +23,38 @@ def generate_ply(smiles: str) -> str:
         1: 0.25, 6: 0.70, 7: 0.65, 8: 0.60,
         9: 0.50, 15: 1.00, 16: 1.00, 17: 0.85,
     }
+    colors = {
+        1: 'white',   # Hydrogen
+        6: 'black',   # Carbon
+        7: 'blue',    # Nitrogen
+        8: 'red',     # Oxygen
+        9: 'green',   # Fluorine
+        15: 'orange', # Phosphorus
+        16: 'yellow', # Sulfur
+        17: 'lime',   # Chlorine
+    }
+
+    plotter = pv.Plotter(off_screen=True)
 
     spheres = []
     for atom in mol.GetAtoms():
         idx = atom.GetIdx()
         pos = conf.GetAtomPosition(idx)
         radius = radii.get(atom.GetAtomicNum(), 0.5)
+        color = colors.get(atom.GetAtomicNum(), 'grey')
         sphere = pv.Sphere(radius=radius, center=[pos.x, pos.y, pos.z])
-        spheres.append(sphere)
+        plotter.add_mesh(sphere, color=color)
+
+     # Add label
+        label = atom.GetSymbol()
+        plotter.add_point_labels(
+            points=np.array([[pos.x, pos.y, pos.z]]),
+            labels=[label],
+            font_size=12,
+            point_color=color,
+            text_color='black'
+        )
+
 
     combined = spheres[0]
     for sphere in spheres[1:]:
