@@ -54,7 +54,8 @@ def visualize_molecule(smiles):
             )
     return view
 
-# Generate .glb file using pyvista (simplified mesh export)
+import numpy as np
+
 def generate_glb(smiles):
     mol = Chem.MolFromSmiles(smiles)
     mol = Chem.AddHs(mol)
@@ -62,13 +63,40 @@ def generate_glb(smiles):
     AllChem.UFFOptimizeMolecule(mol)
     conf = mol.GetConformer()
 
-    # Create pyvista mesh points (atoms)
-    points = []
+    # Atomic radii (approximate, in angstroms)
+    atomic_radii = {
+        1: 0.25,  # H
+        6: 0.70,  # C
+        7: 0.65,  # N
+        8: 0.60,  # O
+        9: 0.50,  # F
+        15: 1.00, # P
+        16: 1.00, # S
+        17: 0.85, # Cl
+        # Add more if needed
+    }
+
+    # Create pyvista sphere meshes for each atom
+    spheres = []
     for atom in mol.GetAtoms():
         pos = conf.GetAtomPosition(atom.GetIdx())
-        points.append([pos.x, pos.y, pos.z])
-    points = pv.PolyData(points)
+        radius = atomic_radii.get(atom.GetAtomicNum(), 0.5)
+        sphere = pv.Sphere(radius=radius, center=[pos.x, pos.y, pos.z], theta_resolution=16, phi_resolution=16)
+        spheres.append(sphere)
 
+    # Combine all spheres into a single mesh
+    combined = spheres[0]
+    for s in spheres[1:]:
+        combined = combined + s
+
+    # Save to temporary .glb file
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".glb")
+    try:
+        combined.save(tmp_file.name)
+        return tmp_file.name
+    except Exception as e:
+        st.error(f"Error saving .glb file: {e}")
+        return None
     # Save to temporary .glb file
     tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".glb")
     try:
