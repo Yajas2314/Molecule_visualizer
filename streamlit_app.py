@@ -1,43 +1,73 @@
 import streamlit as st
 import py3Dmol
 import requests
-import streamlit.components.v1 as components
+from rdkit import Chem
+from rdkit.Chem import AllChem
 
-# Function to get SMILES from molecule name
+st.set_page_config(page_title="Molecule Viewer", layout="wide")
+st.title("🔬 Molecule Visualizer")
+
+# Get user input
+user_input = st.text_input("Enter SMILES or Molecule Name", "")
+
 def get_smiles_from_name(name):
-    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/TXT"
-    response = requests.get(url)
-    return response.text.strip() if response.status_code == 200 else None
+    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/CanonicalSMILES/JSON"
+    try:
+        response = requests.get(url)
+        smiles = response.json()['PropertyTable']['Properties'][0]['CanonicalSMILES']
+        return smiles
+    except:
+        return None
 
-# Function to generate 3D viewer and return HTML
-def generate_html_3d(smiles):
-    mol_view = py3Dmol.view(width=600, height=400)
-    mol_view.addModel(smiles, "smi")
-    mol_view.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
-    mol_view.setBackgroundColor('white')
-    mol_view.zoomTo()
-    return mol_view._make_html()
+def draw_3d_molecule(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol, AllChem.ETKDG())
 
-# Streamlit UI
-st.title("3D Molecule Viewer and HTML Export")
+    # Get 3D coordinates
+    mol_block = Chem.MolToMolBlock(mol)
+    
+    view = py3Dmol.view(width=700, height=500)
+    view.addModel(mol_block, "mol")
+    
+    # Stick & Ball
+    view.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
+    
+    # Element labels
+    for atom in mol.GetAtoms():
+        pos = mol.GetConformer().GetAtomPosition(atom.GetIdx())
+        element = atom.GetSymbol()
+        view.addLabel(
+            element,
+            {'position': {'x': pos.x, 'y': pos.y, 'z': pos.z},
+             'backgroundColor': 'white', 'fontColor': 'black', 'fontSize': 12}
+        )
 
-user_input = st.text_input("Enter molecule name or SMILES code")
+        # Lone pair visualization (approximate)
+        if atom.GetAtomicNum() in [7, 8, 9, 16]:  # N, O, F, S
+            lp_offset = 0.5
+            view.addSphere({
+                'center': {'x': pos.x + lp_offset, 'y': pos.y, 'z': pos.z},
+                'radius': 0.1,
+                'color': 'gray',
+                'opacity': 0.6
+            })
 
+    view.zoomTo()
+    return view
+
+# Logic to convert molecule name to SMILES
 if user_input:
-    if all(char.isalpha() or char.isdigit() for char in user_input.replace("-", "")):
+    if all(c.isalpha() or c.isdigit() for c in user_input):
         smiles = get_smiles_from_name(user_input)
-        if smiles:
-            st.success(f"Found SMILES: {smiles}")
+        if not smiles:
+            st.error("Could not fetch SMILES. Please check the molecule name.")
         else:
-            st.error("Could not fetch SMILES for the name.")
-            st.stop()
+            st.success(f"Found SMILES: {smiles}")
     else:
         smiles = user_input
 
-    html_code = generate_html_3d(smiles)
-
-    # Display the 3D molecule in Streamlit
-    components.html(html_code, height=450, width=700)
-
-    # Option to download HTML
-    st.download_button("Download as HTML", data=html_code, file_name="molecule.html", mime="text/html")
+    if smiles:
+        viewer = draw_3d_molecule(smiles)
+        viewer.show()
+        st.components.v1.html(viewer._make_html(), height=500)
