@@ -1,6 +1,5 @@
 streamlit
 py3Dmol
 requests
-rdkit
 pyvista
-trimesh
+rdkit
