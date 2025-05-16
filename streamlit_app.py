@@ -3,8 +3,10 @@ import py3Dmol
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import requests
+import tempfile
+import pyvista as pv
 
-# Function to get SMILES from molecule name using PubChem
+# Get SMILES from compound name via PubChem
 def get_smiles(name):
     try:
         url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/JSON"
@@ -14,10 +16,10 @@ def get_smiles(name):
     except Exception:
         return None
 
-# Visualize molecule in 3D with colors and labels
+# Visualize molecule with py3Dmol
 def visualize_molecule(smiles):
     mol = Chem.MolFromSmiles(smiles)
-    mol = Chem.AddHs(mol)  # Add hydrogens
+    mol = Chem.AddHs(mol)
     AllChem.EmbedMolecule(mol, randomSeed=0xf00d)
     AllChem.UFFOptimizeMolecule(mol)
 
@@ -25,12 +27,10 @@ def visualize_molecule(smiles):
 
     view = py3Dmol.view(width=500, height=400)
     view.addModel(mol_block, 'mol')
-    # Show ball and stick style with atom colors
     view.setStyle({'stick': {}, 'sphere': {'radius': 0.3}})
     view.setBackgroundColor('0xeeeeee')
     view.zoomTo()
 
-    # Add atom labels
     conf = mol.GetConformer()
     for atom in mol.GetAtoms():
         pos = conf.GetAtomPosition(atom.GetIdx())
@@ -44,7 +44,6 @@ def visualize_molecule(smiles):
              'borderColor': 'gray'}
         )
 
-        # Approximate lone pairs for N, O, S, Cl (just visual)
         if atom.GetAtomicNum() in [7, 8, 16, 17]:
             view.addLabel(
                 "•",
@@ -53,23 +52,62 @@ def visualize_molecule(smiles):
                  'fontSize': 16,
                  'fontColor': 'blue'}
             )
-
     return view
 
-st.title("Molecule Visualizer with Py3Dmol")
+# Generate .glb file using pyvista (simplified mesh export)
+def generate_glb(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol, randomSeed=0xf00d)
+    AllChem.UFFOptimizeMolecule(mol)
+    conf = mol.GetConformer()
+
+    # Create pyvista mesh points (atoms)
+    points = []
+    for atom in mol.GetAtoms():
+        pos = conf.GetAtomPosition(atom.GetIdx())
+        points.append([pos.x, pos.y, pos.z])
+    points = pv.PolyData(points)
+
+    # Save to temporary .glb file
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".glb")
+    try:
+        points.save(tmp_file.name)
+        return tmp_file.name
+    except Exception as e:
+        st.error(f"Error saving .glb file: {e}")
+        return None
+
+# Streamlit app starts here
+st.title("Molecule Visualizer with 3Dmol.js and .glb Export")
 
 user_input = st.text_input("Enter molecule name or SMILES")
 
 if user_input:
-    # Decide if input is SMILES or name
-    if all(c in 'CNOPSHFIBrcl1234567890-=#()@+[]' for c in user_input):  
+    # Check if input looks like SMILES or name
+    if all(c in 'CNOPSHFIBrcl1234567890-=#()@+[]' for c in user_input):
         smiles = user_input
     else:
         smiles = get_smiles(user_input)
 
     if smiles:
-        st.success(f"SMILES: {smiles}")
+        st.success(f"Using SMILES: {smiles}")
+
+        # Show molecule 3D viewer
         view = visualize_molecule(smiles)
         st.components.v1.html(view._make_html(), height=450)
+
+        # Button to generate .glb file
+        if st.button("Generate .glb file"):
+            glb_path = generate_glb(smiles)
+            if glb_path:
+                with open(glb_path, "rb") as f:
+                    glb_bytes = f.read()
+                st.download_button(
+                    label="Download .glb 3D model",
+                    data=glb_bytes,
+                    file_name="molecule_model.glb",
+                    mime="model/gltf-binary"
+                )
     else:
         st.error("Could not find SMILES for the input. Please try again.")
