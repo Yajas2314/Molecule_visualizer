@@ -4,6 +4,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 import pyvista as pv
 import tempfile
+import numpy as np
 
 def get_smiles_from_name(name):
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/TXT"
