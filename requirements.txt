@@ -3,4 +3,3 @@ py3Dmol
 requests
 pyvista
 rdkit
-os
