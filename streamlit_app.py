@@ -54,7 +54,7 @@ if user_input:
         if st.button("Generate .ply File"):
             ply_path = generate_ply(smiles)
             with open(ply_path, "rb") as f:
-            st.download_button("Download .ply", f, file_name="molecule.ply")
+                st.download_button("Download .ply", f, file_name="molecule.ply")
             
     else:
         st.error("Invalid molecule name or SMILES")
