@@ -69,5 +69,4 @@ if user_input:
 
     if smiles:
         viewer = draw_3d_molecule(smiles)
-        viewer.show()
         st.components.v1.html(viewer._make_html(), height=500)
