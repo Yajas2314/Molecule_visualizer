@@ -4,8 +4,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 import requests
 import pyvista as pv
-
-
+import os
 
 st.set_page_config(layout="wide")
 st.title("🔬 3D Molecule Viewer with Atom Colors, Labels & Lone Pairs")
@@ -134,6 +133,15 @@ def generate_glb_from_smiles(smiles: str, output_file: str = "molecule.glb"):
     if mesh is None:
         print("Error: no mesh generated")
         return
+
+if st.button("Generate AR Model"):
+    try:
+        generate_glb_from_smiles(smiles)
+        with open("molecule.glb", "rb") as f :
+            st.download_button("Download .glb file", f, "molecule.glb")
+        st.markdown("[Click here to view in AR](https://your-webar-viewer.com/molecule.glb)")
+    except Exception as e:
+        st.error(f"Error generating model:{e}")
 
     # Save to .glb file
     mesh.save(output_file)
