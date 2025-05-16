@@ -21,6 +21,10 @@ def get_smiles_from_name(name):
 
 def draw_3d_molecule(smiles):
     mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        raise ValueError("Invalid SMILES input. Please enter a correct SMILES string or molecule name.")
+    
     mol = Chem.AddHs(mol)
     AllChem.EmbedMolecule(mol, AllChem.ETKDG())
 
