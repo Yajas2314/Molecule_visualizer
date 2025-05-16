@@ -12,7 +12,7 @@ def get_smiles_from_name(name):
         return response.text.strip()
     return None
 
-def generate_glb(smiles: str) -> str:
+def generate_ply(smiles: str) -> str:
     mol = Chem.MolFromSmiles(smiles)
     mol = Chem.AddHs(mol)
     AllChem.EmbedMolecule(mol, randomSeed=0xf00d)
@@ -36,9 +36,9 @@ def generate_glb(smiles: str) -> str:
     for sphere in spheres[1:]:
         combined += sphere
 
-    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".glb")
-    combined.save(tmp_file.name)
-    return tmp_file.name
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".ply")
+    combined.save(temp_file.name)
+    return temp_file.name
 
 st.title("3D Molecule Visualizer with AR (.glb)")
 user_input = st.text_input("Enter SMILES or Molecule Name")
