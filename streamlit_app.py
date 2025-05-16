@@ -3,6 +3,9 @@ import py3Dmol
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import requests
+import pyvista as pv
+
+
 
 st.set_page_config(layout="wide")
 st.title("🔬 3D Molecule Viewer with Atom Colors, Labels & Lone Pairs")
@@ -111,3 +114,27 @@ if user_input:
         mol_view = generate_3d_structure(smiles)
         mol_html = mol_view._make_html()
         st.components.v1.html(mol_html, height=500, width=800)
+
+def generate_glb_from_smiles(smiles: str, output_file: str = "molecule.glb"):
+    # Generate RDKit molecule with 3D coordinates
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+    AllChem.UFFOptimizeMolecule(mol)
+    conf = mol.GetConformer()
+
+    plotter = pv.Plotter(off_screen=True)
+    for atom in mol.GetAtoms():
+        idx = atom.GetIdx()
+        pos = conf.GetAtomPosition(idx)
+        sphere = pv.Sphere(radius=0.3, center=(pos.x, pos.y, pos.z))
+        plotter.add_mesh(sphere, color='white')
+
+    mesh = plotter.mesh
+    if mesh is None:
+        print("Error: no mesh generated")
+        return
+
+    # Save to .glb file
+    mesh.save(output_file)
+    print(f"Saved molecule model as {output_file}")
