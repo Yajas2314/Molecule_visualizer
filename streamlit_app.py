@@ -97,14 +97,7 @@ def generate_glb(smiles):
     except Exception as e:
         st.error(f"Error saving .glb file: {e}")
         return None
-    # Save to temporary .glb file
-    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".glb")
-    try:
-        points.save(tmp_file.name)
-        return tmp_file.name
-    except Exception as e:
-        st.error(f"Error saving .glb file: {e}")
-        return None
+    
 
 # Streamlit app starts here
 st.title("Molecule Visualizer with 3Dmol.js and .glb Export")
