@@ -51,12 +51,10 @@ if user_input:
 
     if smiles:
         st.success(f"Found SMILES: {smiles}")
-        if st.button("Generate .glb File"):
-            try:
-                glb_path = generate_glb(smiles)
-                with open(glb_path, "rb") as f:
-                    st.download_button("Download .glb File", f, file_name="molecule.glb")
-            except Exception as e:
-                st.error(f"Error: {e}")
+        if st.button("Generate .ply File"):
+            ply_path = generate_ply(smiles)
+            with open(ply_path, "rb") as f:
+            st.download_button("Download .ply", f, file_name="molecule.ply")
+            
     else:
         st.error("Invalid molecule name or SMILES")
