@@ -4,4 +4,3 @@ requests
 pyvista
 rdkit
 open3d
-os
