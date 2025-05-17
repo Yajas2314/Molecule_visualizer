@@ -69,3 +69,6 @@ if user_input:
     if smiles:
         viewer = draw_3d_molecule_with_lone_pairs(smiles)
         st.components.v1.html(viewer._make_html(), height=500)
+
+ply_path = generate_colored_labeled_ply("CCO")  # Ethanol
+print("Saved to:", ply_path)
