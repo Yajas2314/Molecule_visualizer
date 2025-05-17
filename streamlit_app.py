@@ -19,46 +19,33 @@ def get_smiles_from_name(name):
     except:
         return None
 
-def draw_3d_molecule(smiles):
-    mol = Chem.MolFromSmiles(smiles)
-    mol = Chem.MolFromSmiles(smiles)
-    if mol is None:
-        raise ValueError("Invalid SMILES input. Please enter a correct SMILES string or molecule name.")
-    
-    mol = Chem.AddHs(mol)
-    AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+def draw_3d_molecule_with_lone_pairs(mol):
+    mb = Chem.MolToMolBlock(mol)
+    viewer = py3Dmol.view(width=500, height=400)
+    viewer.addModel(mb, 'mol')
+    viewer.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
+    viewer.zoomTo()
 
-    # Get 3D coordinates
-    mol_block = Chem.MolToMolBlock(mol)
-    
-    view = py3Dmol.view(width=700, height=500)
-    view.addModel(mol_block, "mol")
-    
-    # Stick & Ball
-    view.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
-    
-    # Element labels
+    # Add approximate lone pair spheres near O or N atoms
+    conf = mol.GetConformer()
     for atom in mol.GetAtoms():
-        pos = mol.GetConformer().GetAtomPosition(atom.GetIdx())
-        element = atom.GetSymbol()
-        view.addLabel(
-            element,
-            {'position': {'x': pos.x, 'y': pos.y, 'z': pos.z},
-             'backgroundColor': 'white', 'fontColor': 'black', 'fontSize': 12}
-        )
-
-        # Lone pair visualization (approximate)
-        if atom.GetAtomicNum() in [7, 8, 9, 16]:  # N, O, F, S
-            lp_offset = 0.5
-            view.addSphere({
-                'center': {'x': pos.x + lp_offset, 'y': pos.y, 'z': pos.z},
-                'radius': 0.1,
+        if atom.GetSymbol() in ['O', 'N']:
+            pos = conf.GetAtomPosition(atom.GetIdx())
+            viewer.addSphere({
+                'center': {'x': pos.x + 0.3, 'y': pos.y + 0.3, 'z': pos.z},
+                'radius': 0.15,
+                'color': 'gray',
+                'opacity': 0.6
+            })
+            viewer.addSphere({
+                'center': {'x': pos.x - 0.3, 'y': pos.y - 0.3, 'z': pos.z},
+                'radius': 0.15,
                 'color': 'gray',
                 'opacity': 0.6
             })
 
-    view.zoomTo()
-    return view
+    return viewer
+
 
 # Logic to convert molecule name to SMILES
 if user_input:
