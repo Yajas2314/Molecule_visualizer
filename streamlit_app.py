@@ -1,8 +1,7 @@
 import streamlit as st
 import py3Dmol
 import requests
-from rdkit import Chem
-from rdkit.Chem import AllChem
+
 
 st.set_page_config(page_title="Molecule Viewer", layout="wide")
 st.title("🔬 Molecule Visualizer")
@@ -18,6 +17,15 @@ def get_smiles_from_name(name):
         return smiles
     except:
         return None
+from rdkit import Chem
+smiles = "CCO"
+mol = Chem.MolFromSmiles(smiles)
+mol = Chem.AddHs(mol)
+
+from rdkit.Chem import AllChem
+AllChem.EmbedMolecule(mol)
+
+mol_block = Chem.MolToMolBlock(mol)
 
 def draw_3d_molecule_with_lone_pairs(mol):
     mb = Chem.MolToMolBlock(mol)
