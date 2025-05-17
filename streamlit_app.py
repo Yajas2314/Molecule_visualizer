@@ -30,7 +30,10 @@ AllChem.EmbedMolecule(mol)
 mol_block = Chem.MolToMolBlock(mol)
 
 def draw_3d_molecule_with_lone_pairs(mol):
-    mb = Chem.MolToMolBlock(mol)
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+    Chem.EmbedMolecule(mol)
+    mol_block = Chem.MolToMolBlock(mol)     # ✅ CORRECT
     viewer = py3Dmol.view(width=500, height=400)
     viewer.addModel(mb, 'mol')
     viewer.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
