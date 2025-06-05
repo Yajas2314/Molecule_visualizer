@@ -1,5 +1,3 @@
 streamlit
 py3Dmol
 requests
-trimesh
-numpy
