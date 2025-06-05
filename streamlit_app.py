@@ -51,10 +51,18 @@ def get_element_info(smiles):
     return atoms
 
 def render_model_viewer(glb_url):
-    viewer = f'''
-    <model-viewer src="{glb_url}" ar ar-modes="webxr scene-viewer quick-look" auto-rotate camera-controls style="width: 100%; height: 500px;"></model-viewer>
+    return f'''
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <model-viewer src="{glb_url}"
+        alt="A 3D molecule"
+        ar
+        ar-modes="webxr scene-viewer quick-look"
+        auto-rotate
+        camera-controls
+        style="width: 100%; height: 500px;">
+    </model-viewer>
     '''
-    return viewer
+
 
 # ---------- Streamlit App ----------
 st.set_page_config(page_title="AR Molecule Visualizer", layout="wide")
