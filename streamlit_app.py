@@ -1,77 +1,89 @@
 import streamlit as st
 import requests
-from rdkit import Chem
-from rdkit.Chem import AllChem
-import py3Dmol
+import tempfile
+import base64
+import os
 
-# Function to fetch SMILES from molecule name using PubChem
+# ---------- Static atomic data for elements 1-30 ----------
+atomic_data = {
+    'H':  {'name': 'Hydrogen',  'number': 1,  'mass': 1.008,  'config': '1s1'},
+    'He': {'name': 'Helium',    'number': 2,  'mass': 4.0026, 'config': '1s2'},
+    'Li': {'name': 'Lithium',   'number': 3,  'mass': 6.94,   'config': '1s2 2s1'},
+    'Be': {'name': 'Beryllium', 'number': 4,  'mass': 9.0122, 'config': '1s2 2s2'},
+    'B':  {'name': 'Boron',     'number': 5,  'mass': 10.81,  'config': '1s2 2s2 2p1'},
+    'C':  {'name': 'Carbon',    'number': 6,  'mass': 12.011, 'config': '1s2 2s2 2p2'},
+    'N':  {'name': 'Nitrogen',  'number': 7,  'mass': 14.007, 'config': '1s2 2s2 2p3'},
+    'O':  {'name': 'Oxygen',    'number': 8,  'mass': 15.999, 'config': '1s2 2s2 2p4'},
+    'F':  {'name': 'Fluorine',  'number': 9,  'mass': 18.998, 'config': '1s2 2s2 2p5'},
+    'Ne': {'name': 'Neon',      'number': 10, 'mass': 20.180, 'config': '1s2 2s2 2p6'},
+    'Na': {'name': 'Sodium',    'number': 11, 'mass': 22.990, 'config': '1s2 2s2 2p6 3s1'},
+    'Mg': {'name': 'Magnesium', 'number': 12, 'mass': 24.305, 'config': '1s2 2s2 2p6 3s2'},
+    'Al': {'name': 'Aluminium', 'number': 13, 'mass': 26.982, 'config': '1s2 2s2 2p6 3s2 3p1'},
+    'Si': {'name': 'Silicon',   'number': 14, 'mass': 28.085, 'config': '1s2 2s2 2p6 3s2 3p2'},
+    'P':  {'name': 'Phosphorus','number': 15, 'mass': 30.974, 'config': '1s2 2s2 2p6 3s2 3p3'},
+    'S':  {'name': 'Sulfur',    'number': 16, 'mass': 32.06,  'config': '1s2 2s2 2p6 3s2 3p4'},
+    'Cl': {'name': 'Chlorine',  'number': 17, 'mass': 35.45,  'config': '1s2 2s2 2p6 3s2 3p5'},
+    'Ar': {'name': 'Argon',     'number': 18, 'mass': 39.948, 'config': '1s2 2s2 2p6 3s2 3p6'},
+    'K':  {'name': 'Potassium', 'number': 19, 'mass': 39.098, 'config': '1s2 2s2 2p6 3s2 3p6 4s1'},
+    'Ca': {'name': 'Calcium',   'number': 20, 'mass': 40.078, 'config': '1s2 2s2 2p6 3s2 3p6 4s2'},
+    # Add more as needed up to 30
+}
+
+# ---------- Utility Functions ----------
 def fetch_smiles(name):
-    try:
-        url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/TXT"
-        response = requests.get(url)
-        if response.status_code == 200:
-            return response.text.strip()
-    except:
-        return None
+    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/CanonicalSMILES/TXT"
+    r = requests.get(url)
+    return r.text.strip() if r.status_code == 200 else None
 
-# Function to create 3D molecule with labels and lone pair dots
-def draw_molecule_with_labels_and_lone_pairs(smiles):
-    mol = Chem.MolFromSmiles(smiles)
-    mol = Chem.AddHs(mol)
-    AllChem.EmbedMolecule(mol)
-    AllChem.MMFFOptimizeMolecule(mol)
-    mol_block = Chem.MolToMolBlock(mol)
+def generate_fake_glb(smiles):
+    # Placeholder for actual glb generation logic
+    # For now just encode the SMILES string as a dummy glb
+    glb_filename = f"molecule_{smiles}.glb"
+    with open(glb_filename, 'wb') as f:
+        f.write(smiles.encode('utf-8'))
+    return glb_filename
 
-    viewer = py3Dmol.view(width=600, height=500)
-    viewer.addModel(mol_block, 'mol')
+def get_element_info(smiles):
+    atoms = {}
+    for symbol in atomic_data:
+        if symbol in smiles:
+            atoms[symbol] = atomic_data[symbol]
+    return atoms
 
-    for atom in mol.GetAtoms():
-        idx = atom.GetIdx()
-        pos = mol.GetConformer().GetAtomPosition(idx)
-        label = atom.GetSymbol()
-        color = {
-            'H': 'white', 'C': 'gray', 'O': 'red', 'N': 'blue',
-            'S': 'yellow', 'P': 'orange', 'F': 'green', 'Cl': 'green',
-            'Br': 'brown', 'I': 'purple'
-        }.get(label, 'black')
-
-        viewer.addSphere({'center': {'x': pos.x, 'y': pos.y, 'z': pos.z},
-                          'radius': 0.3, 'color': color})
-        viewer.addLabel(label, {
-            'position': {'x': pos.x, 'y': pos.y, 'z': pos.z},
-            'backgroundColor': 'black', 'fontColor': 'white', 'fontSize': 12
-        })
-
-        # Add approximate lone pairs
-        lone_pairs = {
-            'O': 2, 'N': 1, 'S': 2, 'F': 3, 'Cl': 3, 'Br': 3, 'I': 3
-        }.get(label, 0)
-        for i in range(lone_pairs):
-            offset = (i + 1) * 0.25
-            viewer.addSphere({
-                'center': {'x': pos.x + offset, 'y': pos.y + offset, 'z': pos.z + offset},
-                'radius': 0.1, 'color': 'black'
-            })
-
-    viewer.setStyle({'stick': {}})
-    viewer.setBackgroundColor('white')
-    viewer.zoomTo()
+def render_model_viewer(glb_url):
+    viewer = f'''
+    <model-viewer src="{glb_url}" ar ar-modes="webxr scene-viewer quick-look" auto-rotate camera-controls style="width: 100%; height: 500px;"></model-viewer>
+    '''
     return viewer
 
-# Streamlit App
-st.title("Universal Molecule Visualizer")
-user_input = st.text_input("Enter molecule name or SMILES:", "ethanol")
+# ---------- Streamlit App ----------
+st.set_page_config(page_title="AR Molecule Visualizer", layout="wide")
+st.title("🔬 AR Molecule Visualizer")
 
-if user_input:
-    if all(char.isalpha() or char in '=#()[]@+-' for char in user_input):
-        smiles = fetch_smiles(user_input)
+input_text = st.text_input("Enter molecule name or SMILES:")
+
+if input_text:
+    if all(char.isalpha() for char in input_text):
+        smiles = fetch_smiles(input_text)
     else:
-        smiles = user_input
-    
+        smiles = input_text
+
     if smiles:
-        st.success(f"SMILES: {smiles}")
-        viewer = draw_molecule_with_labels_and_lone_pairs(smiles)
-        html = viewer._make_html()
-        st.components.v1.html(html, height=600, width=700)
+        with st.spinner("Generating 3D model..."):
+            glb_file = generate_fake_glb(smiles)  # Replace with actual generation later
+            glb_url = f"https://yourgithubusername.github.io/yourrepo/{glb_file}"  # Replace with real link
+
+            st.subheader("📱 View in Augmented Reality")
+            st.markdown(render_model_viewer(glb_url), unsafe_allow_html=True)
+
+            st.subheader("🧪 Molecular Information")
+            atom_info = get_element_info(smiles)
+            for symbol, data in atom_info.items():
+                st.markdown(f"**{data['name']} ({symbol})**  ")
+                st.markdown(f"Atomic Number: {data['number']}  ")
+                st.markdown(f"Atomic Mass: {data['mass']}  ")
+                st.markdown(f"Electron Configuration: `{data['config']}`  ")
+                st.markdown("---")
     else:
-        st.error("Could not fetch SMILES. Please try a valid molecule.")
+        st.error("Could not find SMILES for that name.")
+
