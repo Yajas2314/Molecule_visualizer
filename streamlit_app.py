@@ -1,81 +1,98 @@
 import streamlit as st
+import py3Dmol
 import requests
 
-# ---------- Utility: Convert molecule name to SMILES ----------
-def get_smiles_from_name(name: str) -> str | None:
-    """Get SMILES string from molecule name using PubChem PUG REST API."""
+# Element information dictionary
+element_data = {
+    "H": {"name": "Hydrogen", "Z": 1, "mass": 1.008, "config": "1s1"},
+    "He": {"name": "Helium", "Z": 2, "mass": 4.0026, "config": "1s2"},
+    "Li": {"name": "Lithium", "Z": 3, "mass": 6.94, "config": "[He] 2s1"},
+    "Be": {"name": "Beryllium", "Z": 4, "mass": 9.0122, "config": "[He] 2s2"},
+    "B": {"name": "Boron", "Z": 5, "mass": 10.81, "config": "[He] 2s2 2p1"},
+    "C": {"name": "Carbon", "Z": 6, "mass": 12.011, "config": "[He] 2s2 2p2"},
+    "N": {"name": "Nitrogen", "Z": 7, "mass": 14.007, "config": "[He] 2s2 2p3"},
+    "O": {"name": "Oxygen", "Z": 8, "mass": 15.999, "config": "[He] 2s2 2p4"},
+    "F": {"name": "Fluorine", "Z": 9, "mass": 18.998, "config": "[He] 2s2 2p5"},
+    "Ne": {"name": "Neon", "Z": 10, "mass": 20.180, "config": "[He] 2s2 2p6"},
+    "Na": {"name": "Sodium", "Z": 11, "mass": 22.990, "config": "[Ne] 3s1"},
+    "Mg": {"name": "Magnesium", "Z": 12, "mass": 24.305, "config": "[Ne] 3s2"},
+    "Al": {"name": "Aluminum", "Z": 13, "mass": 26.982, "config": "[Ne] 3s2 3p1"},
+    "Si": {"name": "Silicon", "Z": 14, "mass": 28.085, "config": "[Ne] 3s2 3p2"},
+    "P": {"name": "Phosphorus", "Z": 15, "mass": 30.974, "config": "[Ne] 3s2 3p3"},
+    "S": {"name": "Sulfur", "Z": 16, "mass": 32.06, "config": "[Ne] 3s2 3p4"},
+    "Cl": {"name": "Chlorine", "Z": 17, "mass": 35.45, "config": "[Ne] 3s2 3p5"},
+    "Ar": {"name": "Argon", "Z": 18, "mass": 39.948, "config": "[Ne] 3s2 3p6"},
+    "K": {"name": "Potassium", "Z": 19, "mass": 39.098, "config": "[Ar] 4s1"},
+    "Ca": {"name": "Calcium", "Z": 20, "mass": 40.078, "config": "[Ar] 4s2"},
+    "Sc": {"name": "Scandium", "Z": 21, "mass": 44.956, "config": "[Ar] 3d1 4s2"},
+    "Ti": {"name": "Titanium", "Z": 22, "mass": 47.867, "config": "[Ar] 3d2 4s2"},
+    "V": {"name": "Vanadium", "Z": 23, "mass": 50.942, "config": "[Ar] 3d3 4s2"},
+    "Cr": {"name": "Chromium", "Z": 24, "mass": 51.996, "config": "[Ar] 3d5 4s1"},
+    "Mn": {"name": "Manganese", "Z": 25, "mass": 54.938, "config": "[Ar] 3d5 4s2"},
+    "Fe": {"name": "Iron", "Z": 26, "mass": 55.845, "config": "[Ar] 3d6 4s2"},
+    "Co": {"name": "Cobalt", "Z": 27, "mass": 58.933, "config": "[Ar] 3d7 4s2"},
+    "Ni": {"name": "Nickel", "Z": 28, "mass": 58.693, "config": "[Ar] 3d8 4s2"},
+    "Cu": {"name": "Copper", "Z": 29, "mass": 63.546, "config": "[Ar] 3d10 4s1"},
+    "Zn": {"name": "Zinc", "Z": 30, "mass": 65.38, "config": "[Ar] 3d10 4s2"},
+}
+
+# Get SMILES from name using PubChem
+def get_smiles_from_name(name):
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/JSON"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        smiles = data['PropertyTable']['Properties'][0]['IsomericSMILES']
-        return smiles
-    else:
-        return None
+    res = requests.get(url)
+    if res.status_code == 200:
+        return res.json()['PropertyTable']['Properties'][0]['IsomericSMILES']
+    return None
 
-# ---------- Utility: Render AR Viewer HTML ----------
-def render_model_viewer(glb_url: str) -> str:
-    """Return HTML string with <model-viewer> for AR display."""
-    return f'''
-    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-    <model-viewer src="{glb_url}" alt="3D molecule model"
-        ar ar-modes="webxr scene-viewer quick-look"
-        auto-rotate camera-controls
-        style="width: 100%; height: 500px;">
-    </model-viewer>
-    '''
+# Display molecule using py3Dmol
+def display_molecule(smiles):
+    mol = py3Dmol.view(width=500, height=400)
+    mol.addModel(smiles, 'smi')
+    mol.setStyle({'stick': {}})
+    mol.setBackgroundColor('white')
+    mol.zoomTo()
+    return mol
 
-# ---------- Main Streamlit app ----------
+# Extract atom symbols from SMILES (approximation)
+def get_atoms(smiles):
+    import re
+    return re.findall(r'[A-Z][a-z]?', smiles)
+
+# Streamlit UI
 def main():
-    st.set_page_config(page_title="AR Molecule Visualizer", layout="centered")
-    st.title("🔬 AR Molecule Visualizer")
+    st.title("🧪 Molecule Visualizer (3D Viewer Only)")
 
-    # Input from user: SMILES or molecule name
-    user_input = st.text_input("Enter molecule name or SMILES code:", placeholder="e.g. water or CCO")
-
-    if user_input:
-        # Simple heuristic: if input looks like SMILES (contains only SMILES chars)
-        smiles_chars = set("CNHOPS1234567890-=#@()/\\[]")
-        is_smiles = all(c in smiles_chars for c in user_input.replace(' ', ''))
-
-        if is_smiles:
-            smiles = user_input.strip()
-            st.info(f"Input detected as SMILES: `{smiles}`")
+    query = st.text_input("Enter molecule name or SMILES:", placeholder="e.g. water or CCO")
+    if query:
+        # Determine SMILES
+        if all(c in "CNHOPS1234567890-=#@()/\\[]" for c in query):
+            smiles = query.strip()
+            st.info(f"Detected SMILES: `{smiles}`")
         else:
-            smiles = get_smiles_from_name(user_input.strip())
-            if smiles is None:
-                st.error("❌ Molecule name not found in PubChem database.")
+            smiles = get_smiles_from_name(query.strip())
+            if not smiles:
+                st.error("Molecule not found.")
                 return
-            st.info(f"Converted molecule name to SMILES: `{smiles}`")
+            st.success(f"Name converted to SMILES: `{smiles}`")
 
-        # --- Map some common SMILES to .glb files hosted on GitHub Pages ---
-        # You need to upload .glb files yourself and update this dictionary accordingly
-        smiles_to_glb = {
-            "O": "water.glb",
-            "C1=CC=CC=C1": "benzene.glb",
-            "CCO": "ethanol.glb",
-            # Add more mappings as you upload more .glb files
-        }
+        # Show 3D
+        mol = display_molecule(smiles)
+        mol.show()
 
-        glb_filename = smiles_to_glb.get(smiles)
-        if glb_filename:
-            glb_url = f"https://yajas2314.github.io/molecule_visualizer/{glb_filename}"
-
-            st.success("3D AR model available! You can view and interact below:")
-            # Show the AR viewer embedded
-            st.markdown(render_model_viewer(glb_url), unsafe_allow_html=True)
-
-            # Also provide a manual "View in AR" button (optional)
-            st.markdown(f'''
-            <a href="{glb_url}" target="_blank" 
-                style="display: inline-block; margin-top: 15px; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">
-                Open AR Model in New Tab
-            </a>
-            ''', unsafe_allow_html=True)
-
-        else:
-            st.warning("⚠️ 3D AR model for this molecule is not yet available.")
-            st.info("You can visualize it using other molecular viewers or request the model.")
+        # Show element info
+        atoms = set(get_atoms(smiles))
+        st.subheader("🔍 Element Information")
+        for atom in atoms:
+            if atom in element_data:
+                info = element_data[atom]
+                st.markdown(f"""
+                **{info['name']}**  
+                Atomic Number: {info['Z']}  
+                Mass Number: {info['mass']} u  
+                Configuration: `{info['config']}`
+                """)
+            else:
+                st.markdown(f"ℹ️ No data for atom: {atom}")
 
 if __name__ == "__main__":
     main()
