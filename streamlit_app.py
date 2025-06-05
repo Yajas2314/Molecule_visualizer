@@ -1,8 +1,10 @@
 import streamlit as st
 import py3Dmol
 import requests
+import re
+import streamlit.components.v1 as components
 
-# Element information dictionary
+# Element data for atomic numbers 1–30
 element_data = {
     "H": {"name": "Hydrogen", "Z": 1, "mass": 1.008, "config": "1s1"},
     "He": {"name": "Helium", "Z": 2, "mass": 4.0026, "config": "1s2"},
@@ -36,7 +38,7 @@ element_data = {
     "Zn": {"name": "Zinc", "Z": 30, "mass": 65.38, "config": "[Ar] 3d10 4s2"},
 }
 
-# Get SMILES from name using PubChem
+# Get SMILES using PubChem API
 def get_smiles_from_name(name):
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/JSON"
     res = requests.get(url)
@@ -53,46 +55,47 @@ def display_molecule(smiles):
     mol.zoomTo()
     return mol
 
-# Extract atom symbols from SMILES (approximation)
+# Get atom symbols from SMILES
 def get_atoms(smiles):
-    import re
     return re.findall(r'[A-Z][a-z]?', smiles)
 
-# Streamlit UI
+# Streamlit main app
 def main():
-    st.title("🧪 Molecule Visualizer (3D Viewer Only)")
+    st.title("🧪 Molecule Visualizer (3D Viewer)")
 
     query = st.text_input("Enter molecule name or SMILES:", placeholder="e.g. water or CCO")
     if query:
         # Determine SMILES
-        if all(c in "CNHOPS1234567890-=#@()/\\[]" for c in query):
+        if all(c.isalnum() or c in "-=#()[]@+\\/." for c in query):
+            # Likely a SMILES
             smiles = query.strip()
             st.info(f"Detected SMILES: `{smiles}`")
         else:
+            # Convert name to SMILES
             smiles = get_smiles_from_name(query.strip())
             if not smiles:
-                st.error("Molecule not found.")
+                st.error("Molecule not found on PubChem.")
                 return
             st.success(f"Name converted to SMILES: `{smiles}`")
 
-        # Show 3D
+        # Show molecule
         mol = display_molecule(smiles)
-        mol.show()
+        components.html(mol._make_html(), height=400)
 
-        # Show element info
+        # Element details
         atoms = set(get_atoms(smiles))
-        st.subheader("🔍 Element Information")
+        st.subheader("🔬 Element Information")
         for atom in atoms:
             if atom in element_data:
                 info = element_data[atom]
                 st.markdown(f"""
-                **{info['name']}**  
-                Atomic Number: {info['Z']}  
-                Mass Number: {info['mass']} u  
-                Configuration: `{info['config']}`
+                **{info['name']} ({atom})**  
+                - Atomic Number: {info['Z']}  
+                - Mass: {info['mass']} u  
+                - Electron Configuration: `{info['config']}`
                 """)
             else:
-                st.markdown(f"ℹ️ No data for atom: {atom}")
+                st.markdown(f"ℹ️ No data found for atom: `{atom}`")
 
 if __name__ == "__main__":
     main()
