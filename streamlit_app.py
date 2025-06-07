@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import py3Dmol
 import requests
 import periodictable
@@ -66,7 +67,7 @@ if user_input:
         view.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
         view.setBackgroundColor("white")
         view.zoomTo()
-        st.components.v1.html(view.render().data, height=470)
+        components.html(view.render().data, height=470)
 
         st.subheader("📘 Molecule Details")
         details = get_molecule_details(molname or smiles)
