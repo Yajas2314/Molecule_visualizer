@@ -2,3 +2,4 @@ streamlit
 py3Dmol
 requests
 periodictable
+Pillow
