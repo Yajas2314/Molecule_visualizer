@@ -3,27 +3,26 @@ import streamlit.components.v1 as components
 import py3Dmol
 import requests
 import periodictable
+import hashlib
 
-st.set_page_config(page_title="Advanced Molecule Visualizer", layout="wide")
-st.title("🧪 Molecule Visualizer with Lone Pairs & Configurations")
+st.set_page_config(page_title="AR Molecule Visualizer", layout="wide")
+st.title("🧪 AR/VR Molecule Visualizer")
 
-# Input
 user_input = st.text_input("🔍 Enter molecule name or SMILES")
 
-def fetch_smiles_from_name(name):
+def fetch_smiles(name):
     try:
         url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/JSON"
-        res = requests.get(url)
-        data = res.json()
-        return data["PropertyTable"]["Properties"][0]["IsomericSMILES"]
+        r = requests.get(url)
+        return r.json()['PropertyTable']['Properties'][0]['IsomericSMILES']
     except:
         return None
 
-def get_molecule_details(name):
+def fetch_info(name):
     try:
         url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/JSON"
-        res = requests.get(url)
-        data = res.json()
+        r = requests.get(url)
+        data = r.json()
         info = data["PC_Compounds"][0]
         props = info.get("props", [])
         weight = next((p["value"]["fval"] for p in props if p.get("urn", {}).get("label") == "Molecular Weight"), "N/A")
@@ -35,64 +34,62 @@ def get_molecule_details(name):
 
 def get_e_config(symbol):
     try:
-        element = getattr(periodictable, symbol.lower())
+        el = getattr(periodictable, symbol.lower())
+        z = el.number
+        orbitals = ['1s', '2s', '2p', '3s', '3p', '4s', '3d', '4p', '5s']
+        fill = {'s': 2, 'p': 6, 'd': 10}
         config = ""
-        electrons = element.number
-        orbitals = ['1s', '2s', '2p', '3s', '3p', '4s', '3d', '4p', '5s', '4d', '5p', '6s']
-        capacity = {'s': 2, 'p': 6, 'd': 10}
         for orb in orbitals:
-            if electrons <= 0:
-                break
-            subshell = orb[-1]
-            max_e = capacity[subshell]
-            fill = min(electrons, max_e)
-            config += f"{orb}{fill} "
-            electrons -= fill
-        return config.strip()
+            if z <= 0: break
+            kind = orb[-1]
+            e = min(fill[kind], z)
+            config += f"{orb}{e} "
+            z -= e
+        return config
     except:
-        return "Not found"
+        return "Unknown"
+
+def get_ar_url(smiles):
+    # Use MD5 hash of SMILES to get the corresponding filename
+    code = hashlib.md5(smiles.encode()).hexdigest()
+    return f"https://raw.githubusercontent.com/Yajas2314/Molecule_visualizer/main/models/{code}.glb"
 
 if user_input:
-    if all(c.isalnum() or c in "=#@[]()\\/.-+" for c in user_input):
-        smiles = user_input
-        molname = None
-    else:
-        molname = user_input
-        smiles = fetch_smiles_from_name(user_input)
+    # Convert name to SMILES if needed
+    smiles = user_input if all(c.isalnum() or c in "=#@[]()\\/.-+" for c in user_input) else fetch_smiles(user_input)
 
     if smiles:
-        st.subheader("🔬 3D Molecular Structure")
-        view = py3Dmol.view(width=600, height=450)
-        view.addModel(smiles, "smi")
-        view.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
-        view.setBackgroundColor("white")
-        view.zoomTo()
-        components.html(view.render().data, height=470)
+        st.subheader("🧬 3D Molecular View")
+        viewer = py3Dmol.view(width=600, height=450)
+        viewer.addModel(smiles, "smi")
+        viewer.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
+        viewer.setBackgroundColor("white")
+        viewer.zoomTo()
+        components.html(viewer.render().data, height=470)
 
-        st.subheader("📘 Molecule Details")
-        details = get_molecule_details(molname or smiles)
-        if details:
-            st.write(f"**Formula:** {details['Formula']}")
-            st.write(f"**Molecular Weight:** {details['Weight']} g/mol")
-        else:
-            st.info("No compound data available.")
+        # AR Model Viewer
+        ar_url = get_ar_url(smiles)
+        st.subheader("👓 View in Augmented Reality")
+        st.markdown(f"""
+        <model-viewer src="{ar_url}" alt="Molecule" ar ar-modes="scene-viewer webxr quick-look" auto-rotate camera-controls 
+        style="width: 100%; height: 400px;"></model-viewer>
 
-        if details and details['Atoms']:
-            st.subheader("🔬 Electronic Configuration of Elements")
-            unique_atoms = set(details["Atoms"])
-            for atomic_num in unique_atoms:
+        <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+        """, unsafe_allow_html=True)
+
+        st.subheader("📘 Molecular Information")
+        info = fetch_info(user_input)
+        if info:
+            st.write(f"**Formula**: {info['Formula']}")
+            st.write(f"**Molecular Weight**: {info['Weight']} g/mol")
+            st.subheader("🧠 Electronic Configurations")
+            for z in set(info["Atoms"]):
                 try:
-                    symbol = periodictable.elements[atomic_num].symbol
-                    config = get_e_config(symbol)
-                    st.markdown(f"**{symbol} (Z={atomic_num})** → {config}")
+                    symbol = periodictable.elements[z].symbol
+                    st.markdown(f"**{symbol}**: {get_e_config(symbol)}")
                 except:
                     continue
-
-        st.subheader("💡 Note on Lone Pairs")
-        st.markdown("""
-        - Lone pairs are not directly encoded in SMILES.
-        - The structure uses **valence rules**; lone pairs are **approximated visually** via shape.
-        - You can infer lone pairs based on the **valence shell electron pair repulsion (VSEPR)** model.
-        """)
+        else:
+            st.info("No extra info available.")
     else:
-        st.error("❌ Invalid molecule name or SMILES.")
+        st.error("Invalid name or SMILES format.")
