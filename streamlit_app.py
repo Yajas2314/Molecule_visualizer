@@ -1,5 +1,4 @@
-# streamlit_app.py - Pure Python Molecule Visualizer with Atom Labels and Enhanced Lone Pair Electrons
-
+# streamlit_app.py - Molecule Visualizer 
 import streamlit as st
 import streamlit.components.v1 as components
 from rdkit import Chem
@@ -51,23 +50,27 @@ def render_3d_view_html(smiles):
     viewer = py3Dmol.view(width=500, height=400)
     viewer.addModel(mb, 'mol')
 
-    # Add atom labels as part of sphere style with specific labels
+    # Use combined stick and sphere style for better visualization
+    viewer.setStyle({}, {
+        "stick": {},
+        "sphere": {"scale": 0.3}
+    })
+
+    # Add atom labels explicitly
+    conf = mol.GetConformer()
     for atom in mol.GetAtoms():
         idx = atom.GetIdx()
         label = atom.GetSymbol()
-        viewer.setStyle({"model": -1, "serial": idx + 1}, {
-            "sphere": {"scale": 0.3, "color": element_colors.get(label, "gray")},
-            "label": {
-                "text": label,
-                "font": "Arial",
-                "scale": 0.4,
-                "fontColor": "black",
-                "showBackground": False
-            }
+        pos = conf.GetAtomPosition(idx)
+        viewer.addLabel(label, {
+            "position": {"x": pos.x, "y": pos.y, "z": pos.z},
+            "backgroundColor": "white",
+            "fontColor": "black",
+            "fontSize": 14,
+            "inFront": True
         })
 
     # Add lone pair electrons
-    conf = mol.GetConformer()
     for atom in mol.GetAtoms():
         symbol = atom.GetSymbol()
         idx = atom.GetIdx()
@@ -126,6 +129,6 @@ if user_input:
             display_element_info(mol)
 
         with col2:
-            st.subheader("🧪 3D Structure (With Labels & Lone Pairs)")
+            st.subheader("🧪 3D Structure (Stick and Ball + Labels + Lone Pairs)")
             viewer = render_3d_view_html(smiles)
             components.html(viewer._make_html(), height=400)
