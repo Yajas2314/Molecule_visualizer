@@ -1,98 +1,103 @@
+# streamlit_app.py - Pure Python Molecule Visualizer
+
+# streamlit_app.py - Pure Python Molecule Visualizer with HTML-based 3D Viewer
+
 import streamlit as st
 import streamlit.components.v1 as components
+from rdkit import Chem
+from rdkit.Chem import Draw, Descriptors, rdMolDescriptors
+from rdkit.Chem import AllChem
 import py3Dmol
 import requests
-import periodictable
-import hashlib
+from PIL import Image
+from io import BytesIO
 
-st.set_page_config(page_title="AR Molecule Visualizer", layout="wide")
-st.title("🧪 AR/VR Molecule Visualizer")
+# Atomic data dictionary
+atomic_data = {
+    "H": {"number": 1, "mass": 1.008, "config": "1s1"},
+    "C": {"number": 6, "mass": 12.011, "config": "1s2 2s2 2p2"},
+    "N": {"number": 7, "mass": 14.007, "config": "1s2 2s2 2p3"},
+    "O": {"number": 8, "mass": 15.999, "config": "1s2 2s2 2p4"},
+    "F": {"number": 9, "mass": 18.998, "config": "1s2 2s2 2p5"},
+    "Cl": {"number": 17, "mass": 35.45, "config": "[Ne] 3s2 3p5"},
+    "Na": {"number": 11, "mass": 22.99, "config": "[Ne] 3s1"},
+    "S": {"number": 16, "mass": 32.06, "config": "[Ne] 3s2 3p4"},
+    # Extend this dictionary as needed
+}
 
-user_input = st.text_input("🔍 Enter molecule name or SMILES")
+# Element color dictionary for 3Dmol.js
+element_colors = {
+    "H": "white", "C": "black", "O": "red", "N": "blue", "S": "yellow",
+    "Cl": "green", "F": "lime", "Na": "orange"
+}
 
-def fetch_smiles(name):
+# Get SMILES from PubChem if user input is a name
+def fetch_smiles_from_name(name):
     try:
         url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/JSON"
-        r = requests.get(url)
-        return r.json()['PropertyTable']['Properties'][0]['IsomericSMILES']
+        response = requests.get(url)
+        data = response.json()
+        return data["PropertyTable"]["Properties"][0]["IsomericSMILES"]
     except:
         return None
 
-def fetch_info(name):
-    try:
-        url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/JSON"
-        r = requests.get(url)
-        data = r.json()
-        info = data["PC_Compounds"][0]
-        props = info.get("props", [])
-        weight = next((p["value"]["fval"] for p in props if p.get("urn", {}).get("label") == "Molecular Weight"), "N/A")
-        formula = next((p["value"]["sval"] for p in props if p.get("urn", {}).get("label") == "Molecular Formula"), "N/A")
-        atoms = info.get("atoms", {}).get("element", [])
-        return {"Formula": formula, "Weight": weight, "Atoms": atoms}
-    except:
-        return None
+# Render 2D image from RDKit molecule
+def render_2d_molecule(mol):
+    img = Draw.MolToImage(mol, size=(300, 300))
+    return img
 
-def get_e_config(symbol):
-    try:
-        el = getattr(periodictable, symbol.lower())
-        z = el.number
-        orbitals = ['1s', '2s', '2p', '3s', '3p', '4s', '3d', '4p', '5s']
-        fill = {'s': 2, 'p': 6, 'd': 10}
-        config = ""
-        for orb in orbitals:
-            if z <= 0: break
-            kind = orb[-1]
-            e = min(fill[kind], z)
-            config += f"{orb}{e} "
-            z -= e
-        return config
-    except:
-        return "Unknown"
+# Render 3D viewer using py3Dmol and display via HTML iframe
 
-def get_ar_url(smiles):
-    # Use MD5 hash of SMILES as filename
-    code = hashlib.md5(smiles.encode()).hexdigest()
-    return f"https://raw.githubusercontent.com/Yajas2314/Molecule_visualizer/main/models/{code}.glb"
+def render_3d_view_html(smiles):
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol)
+    AllChem.UFFOptimizeMolecule(mol)
+    mb = Chem.MolToMolBlock(mol)
+    viewer = py3Dmol.view(width=500, height=400)
+    viewer.addModel(mb, 'mol')
+    viewer.setStyle({"stick": {}, "sphere": {"scale": 0.3}})
+    viewer.zoomTo()
+    return viewer
+
+# Show element-wise data below structure
+def display_element_info(mol):
+    elements = set([atom.GetSymbol() for atom in mol.GetAtoms()])
+    st.subheader("🧠 Element Info")
+    for elem in sorted(elements):
+        data = atomic_data.get(elem)
+        if data:
+            st.markdown(f"**{elem}**  →  Atomic No: {data['number']}, Mass: {data['mass']}, Configuration: `{data['config']}`")
+        else:
+            st.markdown(f"**{elem}**  →  No data available.")
+
+# App UI starts here
+st.set_page_config(page_title="Molecule Visualizer", layout="wide")
+st.title("🧪 Molecule Visualizer with Atom Data")
+user_input = st.text_input("Enter molecule name or SMILES (e.g. Ethanol or CCO):")
 
 if user_input:
-    # Convert to SMILES if needed
-    smiles = user_input if all(c.isalnum() or c in "=#@[]()\\/.-+" for c in user_input) else fetch_smiles(user_input)
+    smiles = user_input if Chem.MolFromSmiles(user_input) else fetch_smiles_from_name(user_input)
 
-    if smiles:
-        st.subheader("🧬 3D Molecular View")
-        viewer = py3Dmol.view(width=600, height=450)
-        viewer.addModel(smiles, "smi")
-        viewer.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
-        viewer.setBackgroundColor("white")
-        viewer.zoomTo()
-
-        # ✅ FIXED HERE:
-        components.html(viewer._make_html(), height=470)
-
-        # AR model viewer
-        st.subheader("👓 View in Augmented Reality")
-        ar_url = get_ar_url(smiles)
-        st.markdown(f"""
-        <model-viewer src="{ar_url}" alt="Molecule" ar ar-modes="scene-viewer webxr quick-look" auto-rotate camera-controls 
-        style="width: 100%; height: 400px;"></model-viewer>
-
-        <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-        """, unsafe_allow_html=True)
-
-        # Details
-        st.subheader("📘 Molecular Information")
-        info = fetch_info(user_input)
-        if info:
-            st.write(f"**Formula**: {info['Formula']}")
-            st.write(f"**Molecular Weight**: {info['Weight']} g/mol")
-            st.subheader("🧠 Electronic Configurations")
-            for z in set(info["Atoms"]):
-                try:
-                    symbol = periodictable.elements[z].symbol
-                    st.markdown(f"**{symbol}**: {get_e_config(symbol)}")
-                except:
-                    continue
-        else:
-            st.info("No extra info available.")
+    if not smiles:
+        st.error("Could not resolve input to a valid SMILES string.")
     else:
-        st.error("Invalid molecule name or SMILES format.")
+        mol = Chem.MolFromSmiles(smiles)
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("🧬 2D Structure")
+            img = render_2d_molecule(mol)
+            st.image(img)
+
+            st.subheader("📘 Molecular Info")
+            st.write(f"**SMILES:** {smiles}")
+            st.write(f"**Formula:** {rdMolDescriptors.CalcMolFormula(mol)}")
+            st.write(f"**Molecular Weight:** {Descriptors.ExactMolWt(mol):.2f} g/mol")
+
+            display_element_info(mol)
+
+        with col2:
+            st.subheader("🧪 3D Structure (Color by Element)")
+            viewer = render_3d_view_html(smiles)
+            components.html(viewer._make_html(), height=400)
