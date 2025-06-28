@@ -1,4 +1,4 @@
-# streamlit_app.py - Pure Python Molecule Visualizer with Atom Labels and Lone Pair Electrons
+# streamlit_app.py - Pure Python Molecule Visualizer with Atom Labels and Enhanced Lone Pair Electrons
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -9,6 +9,7 @@ import py3Dmol
 import requests
 from PIL import Image
 from io import BytesIO
+import math
 
 # Atomic data dictionary
 atomic_data = {
@@ -20,16 +21,14 @@ atomic_data = {
     "Cl": {"number": 17, "mass": 35.45, "config": "[Ne] 3s2 3p5", "lone_pairs": 3},
     "Na": {"number": 11, "mass": 22.99, "config": "[Ne] 3s1", "lone_pairs": 0},
     "S": {"number": 16, "mass": 32.06, "config": "[Ne] 3s2 3p4", "lone_pairs": 2},
-    # Extend this dictionary as needed
 }
 
-# Element color dictionary for 3Dmol.js
+# Element color dictionary
 element_colors = {
     "H": "white", "C": "black", "O": "red", "N": "blue", "S": "yellow",
     "Cl": "green", "F": "lime", "Na": "orange"
 }
 
-# Get SMILES from PubChem if user input is a name
 def fetch_smiles_from_name(name):
     try:
         url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/IsomericSMILES/JSON"
@@ -39,12 +38,9 @@ def fetch_smiles_from_name(name):
     except:
         return None
 
-# Render 2D image from RDKit molecule
 def render_2d_molecule(mol):
     img = Draw.MolToImage(mol, size=(300, 300))
     return img
-
-# Render 3D viewer using py3Dmol and display via HTML iframe, with labels and lone pairs
 
 def render_3d_view_html(smiles):
     mol = Chem.MolFromSmiles(smiles)
@@ -54,29 +50,47 @@ def render_3d_view_html(smiles):
     mb = Chem.MolToMolBlock(mol)
     viewer = py3Dmol.view(width=500, height=400)
     viewer.addModel(mb, 'mol')
-    viewer.setStyle({"stick": {}, "sphere": {"scale": 0.3}})
-    viewer.addStyle({}, {"label": {"font": "Arial", "scale": 0.5, "backgroundColor": "white"}})
 
-    # Add lone pair markers (approximate - shown as tiny dots near atoms)
+    # Add atom labels as part of sphere style with specific labels
+    for atom in mol.GetAtoms():
+        idx = atom.GetIdx()
+        label = atom.GetSymbol()
+        viewer.setStyle({"model": -1, "serial": idx + 1}, {
+            "sphere": {"scale": 0.3, "color": element_colors.get(label, "gray")},
+            "label": {
+                "text": label,
+                "font": "Arial",
+                "scale": 0.4,
+                "fontColor": "black",
+                "showBackground": False
+            }
+        })
+
+    # Add lone pair electrons
+    conf = mol.GetConformer()
     for atom in mol.GetAtoms():
         symbol = atom.GetSymbol()
         idx = atom.GetIdx()
-        pos = mol.GetConformer().GetAtomPosition(idx)
+        pos = conf.GetAtomPosition(idx)
         lp_count = atomic_data.get(symbol, {}).get("lone_pairs", 0)
+
+        radius = 0.3  # Bigger size
+        offset = 1.0  # Farther from nucleus
+
         for i in range(lp_count):
-            dx = 0.3 * ((i % 2) - 0.5)
-            dy = 0.3 * ((i // 2) - 0.5)
+            angle = (i + 1) * (360 / (lp_count + 1))
+            dx = offset * math.cos(math.radians(angle))
+            dy = offset * math.sin(math.radians(angle))
             viewer.addSphere({
-                'center': {'x': pos.x + dx, 'y': pos.y + dy, 'z': pos.z + 0.3},
-                'radius': 0.1,
+                'center': {'x': pos.x + dx, 'y': pos.y + dy, 'z': pos.z + 0.5},
+                'radius': radius,
                 'color': 'gray',
-                'opacity': 0.7
+                'opacity': 0.5
             })
 
     viewer.zoomTo()
     return viewer
 
-# Show element-wise data below structure
 def display_element_info(mol):
     elements = set([atom.GetSymbol() for atom in mol.GetAtoms()])
     st.subheader("🧠 Element Info")
@@ -87,9 +101,8 @@ def display_element_info(mol):
         else:
             st.markdown(f"**{elem}**  →  No data available.")
 
-# App UI starts here
 st.set_page_config(page_title="Molecule Visualizer", layout="wide")
-st.title("🧪 Molecule Visualizer with Atom Labels, Lone Pairs & Data")
+st.title("🧪 Molecule Visualizer with Atom Labels & Lone Pairs")
 user_input = st.text_input("Enter molecule name or SMILES (e.g. Ethanol or CCO):")
 
 if user_input:
@@ -103,8 +116,7 @@ if user_input:
 
         with col1:
             st.subheader("🧬 2D Structure")
-            img = render_2d_molecule(mol)
-            st.image(img)
+            st.image(render_2d_molecule(mol))
 
             st.subheader("📘 Molecular Info")
             st.write(f"**SMILES:** {smiles}")
@@ -114,6 +126,6 @@ if user_input:
             display_element_info(mol)
 
         with col2:
-            st.subheader("🧪 3D Structure (With Atom Labels & Lone Pairs)")
+            st.subheader("🧪 3D Structure (With Labels & Lone Pairs)")
             viewer = render_3d_view_html(smiles)
             components.html(viewer._make_html(), height=400)
