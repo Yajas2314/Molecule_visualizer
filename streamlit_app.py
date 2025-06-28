@@ -50,12 +50,12 @@ def get_e_config(symbol):
         return "Unknown"
 
 def get_ar_url(smiles):
-    # Use MD5 hash of SMILES to get the corresponding filename
+    # Use MD5 hash of SMILES as filename
     code = hashlib.md5(smiles.encode()).hexdigest()
     return f"https://raw.githubusercontent.com/Yajas2314/Molecule_visualizer/main/models/{code}.glb"
 
 if user_input:
-    # Convert name to SMILES if needed
+    # Convert to SMILES if needed
     smiles = user_input if all(c.isalnum() or c in "=#@[]()\\/.-+" for c in user_input) else fetch_smiles(user_input)
 
     if smiles:
@@ -65,11 +65,13 @@ if user_input:
         viewer.setStyle({'stick': {}, 'sphere': {'scale': 0.3}})
         viewer.setBackgroundColor("white")
         viewer.zoomTo()
-        components.html(viewer.render().data, height=470)
 
-        # AR Model Viewer
-        ar_url = get_ar_url(smiles)
+        # ✅ FIXED HERE:
+        components.html(viewer._make_html(), height=470)
+
+        # AR model viewer
         st.subheader("👓 View in Augmented Reality")
+        ar_url = get_ar_url(smiles)
         st.markdown(f"""
         <model-viewer src="{ar_url}" alt="Molecule" ar ar-modes="scene-viewer webxr quick-look" auto-rotate camera-controls 
         style="width: 100%; height: 400px;"></model-viewer>
@@ -77,6 +79,7 @@ if user_input:
         <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
         """, unsafe_allow_html=True)
 
+        # Details
         st.subheader("📘 Molecular Information")
         info = fetch_info(user_input)
         if info:
@@ -92,4 +95,4 @@ if user_input:
         else:
             st.info("No extra info available.")
     else:
-        st.error("Invalid name or SMILES format.")
+        st.error("Invalid molecule name or SMILES format.")
